@@ -30,3 +30,17 @@ Show how to use the code to extract study information from a given paper.
 
 ### result_extraction.ipynb
 Show how to use the code to extract results from a given paper.
+
+# Citations
+
+```bib
+@article{wang2025accelerating,
+  title   = {Accelerating clinical evidence synthesis with large language models},
+  author  = {Wang, Zifeng and Cao, Lang and Danek, Benjamin and Jin, Qiao and Lu, Zhiyong and Sun, Jimeng},
+  journal = {npj Digital Medicine},
+  volume  = {8},
+  pages   = {509},
+  year    = {2025},
+  doi     = {10.1038/s41746-025-01840-7},
+}
+```
