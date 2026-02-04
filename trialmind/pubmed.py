@@ -520,15 +520,24 @@ class PubmedAPIWrapper:
         response = requests.get(query)
         return response
 
-def pmid2biocxml(pmid):
-    base_url = "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_xml/{pmid}/unicode"
+    
+def pmid2biocxml(pmid, api_key):
+    base_url = "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/{text_type}.cgi/BioC_xml/{pmid}/unicode?api_key={pubmed_api_key}"
     if not isinstance(pmid, list): pmid = [pmid]
     res = []
     for pmid_ in pmid:
-        request_url = base_url.format(pmid=pmid_)
+        request_url = base_url.format(pmid=pmid_, text_type='pmcoa',
+                                     pubmed_api_key=api_key)
         response = requests.get(request_url)
+        print(request_url)
+        # if the full text isn't available, then take an abstract
+        if 'No result can be found' in response.text:
+            request_url = base_url.format(pmid=pmid_, text_type='pubmed',
+                                         pubmed_api_key=api_key)
+            response = requests.get(request_url)
         res.append(response.text)
     return res
+
 
 def parse_bioc_xml(path):
     """

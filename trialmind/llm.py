@@ -11,6 +11,7 @@ def call_llm(
     llm="openai-gpt-4o",
     temperature=0.0,
     streaming=False,
+    thinking=False,
     stop_words=[],
 ):
     """Call Chat LLM models, with text inputs and text outputs.
@@ -40,6 +41,7 @@ def call_llm(
         messages=messages,
         temperature=temperature,
         stop=stop_words,
+        thinking=thinking,
         stream=streaming
     )
     return _wrap_response_openai(response)
@@ -55,6 +57,7 @@ def batch_call_llm(
     ]],
     temperature=0.0,
     batch_size=None,
+    thinking=False
     ):
     """Call Chat LLM models on a batch of inputs in parallel, with text inputs and text outputs.
 
@@ -77,14 +80,16 @@ def batch_call_llm(
     Returns:
         str: The response from the LLM model.
     """
+    print(thinking)
     batch_messages = _batch_inputs_to_messages(prompt_template=prompt_template, batch_inputs=batch_inputs)
     if batch_size is not None:
         results = []
         for i in range(0, len(batch_messages), batch_size):
-            batch_results = batch_call_openai(batch_messages[i:i+batch_size], llm=llm, temperature=temperature)
+            batch_results = batch_call_openai(batch_messages[i:i+batch_size], llm=llm, temperature=temperature, thinking=thinking)
             results.extend(batch_results)
     else:
-        results = batch_call_openai(batch_messages, llm=llm, temperature=temperature)
+        results = batch_call_openai(batch_messages, llm=llm, temperature=temperature,
+                                   thinking=thinking)
     return results
 
 

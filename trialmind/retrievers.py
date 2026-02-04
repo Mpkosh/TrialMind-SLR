@@ -33,7 +33,9 @@ def semantic_filtering_fn(splited_docs, queries, semantic_filtering_top_k):
     semantic_filtering_top_k: int, number of top k documents to return
     """
     from langchain_community.retrievers import BM25Retriever
-    from langchain.docstore.document import Document
+    #from langchain.docstore.document import Document
+    from langchain_core.documents import Document
+    
     if isinstance(queries, str):
         queries = [queries]
     # build the indexed once, and search by filtering the input ids
@@ -65,7 +67,8 @@ def split_text_into_chunks(text, chunk_size=1000, chunk_overlap=20):
     return blocks
 
 def combine_blocks_text(blocks, format="xml"):
-    from langchain.docstore.document import Document
+    #from langchain.docstore.document import Document
+    from langchain_core.documents import Document
     # combine the blocks
     new_blocks = []
     for i, block in enumerate(blocks):

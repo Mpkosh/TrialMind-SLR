@@ -4,8 +4,12 @@ from typing import List, Union
 import httpx
 from openai import AsyncOpenAI
 from openai import AsyncAzureOpenAI
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+
 import tenacity
 import json
+import httpx
 
 OPENAI_MODEL_NAME_GPT4 = "gpt-4-turbo"  # new gpt-4-turbo
 OPENAI_MODEL_NAME_GPT35 = "gpt-3.5-turbo"
@@ -16,7 +20,9 @@ OPENAI_MODEL_NAME_MAP = {
     "openai-gpt-4o": OPENAI_MODEL_NAME_GPT4o,
 }
 
-
+BASE_URL = "https://router.huggingface.co/v1"
+HUGGINGFACE_HUB_TOKEN ='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'
+'''
 async_openai_client = AsyncOpenAI(
     http_client=httpx.AsyncClient(
         limits=httpx.Limits(
@@ -25,22 +31,41 @@ async_openai_client = AsyncOpenAI(
         )
     )
 )
+'''
+async_openai_client = AsyncOpenAI(
+    base_url=BASE_URL,
+    api_key=HUGGINGFACE_HUB_TOKEN,
+    http_client=httpx.AsyncClient(verify=False)
+)
 
 
-@tenacity.retry(wait=tenacity.wait_random_exponential(min=60, max=600), stop=tenacity.stop_after_attempt(10), reraise=True)
-async def api_call_single(client: AsyncOpenAI, model: str, messages: list[dict], temperature: float = 0.0, **kwargs):
+@tenacity.retry(#wait=tenacity.wait_random_exponential(min=60, max=600),
+                stop=tenacity.stop_after_attempt(1), 
+                #reraise=True
+               )
+async def api_call_single(client: AsyncOpenAI, model: str, messages: list[dict], temperature: float = 0.0, thinking: bool = False, **kwargs):
     # Call the API
+    if not thinking:
+        messages[0]['content'] = '/no_think '+messages[0]['content']
+    
     response = await client.chat.completions.create(
         model=model,
         messages=messages,  # Ensure messages is a list
         temperature=temperature,
         **kwargs
     )
+
     return response
 
-@tenacity.retry(wait=tenacity.wait_random_exponential(min=60, max=600), stop=tenacity.stop_after_attempt(10), reraise=True)
-async def api_function_call_single(client: AsyncOpenAI, model: str, messages: list[dict], tools: list[dict], temperature: float = 0.0, **kwargs):
+@tenacity.retry(#wait=tenacity.wait_random_exponential(min=60, max=600),
+                stop=tenacity.stop_after_attempt(1), 
+                #reraise=True
+               )
+async def api_function_call_single(client: AsyncOpenAI, model: str, messages: list[dict], tools: list[dict], temperature: float = 0.0, thinking: bool = False, **kwargs):
     # Call the API
+    if not thinking:
+        messages[0]['content'] = '/no_think '+messages[0]['content']
+        
     response = await client.chat.completions.create(
         model=model,
         messages=messages,
@@ -66,8 +91,8 @@ async def apply_function_call_async(client: AsyncOpenAI, model: str, messages_li
     results = await asyncio.gather(*tasks)
     return results
 
-def batch_call_openai(batch_messages, llm, temperature):
-    model = OPENAI_MODEL_NAME_MAP.get(llm)
+def batch_call_openai(batch_messages, llm, temperature, thinking=False):
+    model = llm#OPENAI_MODEL_NAME_MAP.get(llm)
     if model is not None:
         results = _async_execute(
             async_function = apply_async, 
@@ -75,11 +100,12 @@ def batch_call_openai(batch_messages, llm, temperature):
             model=model, 
             messages_list=batch_messages, 
             temperature=temperature, 
-            seed=0
+            seed=0,
+            thinking=thinking
             )
     else:
         raise ValueError(f"Unknown llm: {llm}")
-    
+
     parsed_results = []
     for result in results:
         try:
@@ -89,8 +115,8 @@ def batch_call_openai(batch_messages, llm, temperature):
             parsed_results.append("")
     return parsed_results
 
-def batch_function_call_openai(batch_messages, llm, tools, temperature):
-    model = OPENAI_MODEL_NAME_MAP.get(llm)
+def batch_function_call_openai(batch_messages, llm, tools, temperature,thinking=False):
+    model = llm#OPENAI_MODEL_NAME_MAP.get(llm)
     if model is not None:
         results = _async_execute(
             async_function = apply_function_call_async, 
@@ -99,7 +125,8 @@ def batch_function_call_openai(batch_messages, llm, tools, temperature):
             messages_list=batch_messages, 
             tools=tools, 
             temperature=temperature, 
-            seed=0
+            seed=0,
+            thinking=thinking
             )
     else:
         raise ValueError(f"Unknown llm: {llm}")

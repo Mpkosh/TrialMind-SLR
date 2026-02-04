@@ -21,6 +21,7 @@ from .prompts.search_query import (
     PRIMARY_TERM_EXTRACTION, 
     SEARCH_TERM_EXTRACTION
 )
+
 from .prompts.extraction import (
     STUDY_RESULTS_FORMATTING,
     RESULT_TABLE_EXTRACTION,
@@ -31,7 +32,7 @@ from .prompts.extraction import (
 from .prompts.screening import LITERATURE_SCREENING_FC
 from .prompts.screen_criteria import SCREENING_CRITERIA_GENERATION
 from .pubmed import ReqPubmedFull, ReqPubmedID
-from .sandbox import E2BSandbox
+#from .sandbox import E2BSandbox
 
 
 from logging import getLogger
@@ -66,7 +67,7 @@ def extract_json(input_text):
 def parse_json_outputs(outputs: List[str]) -> List[Dict]:
     parsed_outputs = []
     for output in outputs:
-        output = extract_json(output)
+        output = extract_json(output.strip('<think>\n\n</think>\n\n'))
         try:
             output = json.loads(output)
         except:
@@ -200,7 +201,8 @@ class ScreeningCriteriaGeneration:
         outcome: str,
         num_title_criteria: int=3,
         num_abstract_criteria: int=3,
-        llm: str="gpt-4"
+        llm: str="gpt-4",
+        thinking: bool = False,
         ):
         outputs = call_llm(
             SCREENING_CRITERIA_GENERATION, 
@@ -211,12 +213,12 @@ class ScreeningCriteriaGeneration:
              "num_title_criteria": num_title_criteria, 
              "num_abstract_criteria": num_abstract_criteria
             }, 
-            llm=llm
+            llm=llm,
+            thinking=thinking,
             )
-        
+        print(outputs)
         if outputs is not None:
             outputs = parse_json_outputs([outputs])[0]
-
         title_criteria = outputs.get("TITLE_CRITERIA", [])
         content_criteria = outputs.get("CONTENT_CRITERIA", [])
         eligibility_analysis = outputs.get("ELIGIBILITY_ANALYSIS", [])
@@ -270,6 +272,9 @@ class StudyCharacteristicsExtraction:
         batch_size: int = None,
         semantic_filtering: bool = False,
         semantic_filtering_top_k: int = 20,
+        chunk_size: int = 1000,
+        chunk_overlap: int = 20,
+        thinking: bool = False,
         ):
         # get the fields
         fields = fields if len(fields) > 0 else self.DEFAULT_FIELDS
@@ -279,7 +284,8 @@ class StudyCharacteristicsExtraction:
         batch_inputs = []
         splited_docs = []
         for i, paper in enumerate(papers):
-            splited = split_text_into_chunks(paper)
+            splited = split_text_into_chunks(paper, chunk_size=chunk_size,
+                                             chunk_overlap=chunk_overlap)
             splited_docs.append(splited)
 
         if semantic_filtering:
@@ -299,7 +305,7 @@ class StudyCharacteristicsExtraction:
             })
         
         # call llm
-        outputs = batch_call_llm(STUDY_FIELDS_EXTRACTION, batch_inputs, llm=llm, batch_size=batch_size)
+        outputs = batch_call_llm(STUDY_FIELDS_EXTRACTION, batch_inputs, llm=llm, batch_size=batch_size, thinking=thinking)
         parsed_outputs = parse_json_outputs(outputs)
 
         # attach the cited blocks to the outputs
