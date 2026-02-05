@@ -7,6 +7,8 @@ from openai import AsyncAzureOpenAI
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 
+import os
+
 import tenacity
 import json
 import httpx
@@ -20,8 +22,6 @@ OPENAI_MODEL_NAME_MAP = {
     "openai-gpt-4o": OPENAI_MODEL_NAME_GPT4o,
 }
 
-BASE_URL = "https://router.huggingface.co/v1"
-HUGGINGFACE_HUB_TOKEN ='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'
 '''
 async_openai_client = AsyncOpenAI(
     http_client=httpx.AsyncClient(
@@ -33,8 +33,8 @@ async_openai_client = AsyncOpenAI(
 )
 '''
 async_openai_client = AsyncOpenAI(
-    base_url=BASE_URL,
-    api_key=HUGGINGFACE_HUB_TOKEN,
+    base_url=os.getenv("BASE_URL"),
+    api_key=os.getenv("OPENAI_API_KEY"),
     http_client=httpx.AsyncClient(verify=False)
 )
 

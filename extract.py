@@ -5,6 +5,7 @@ from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_pymupdf4llm import PyMuPDF4LLMLoader, PyMuPDF4LLMParser
 import pymupdf4llm
 import re
+import os
 
 from openai import AsyncOpenAI,OpenAI
 from langchain_openai import ChatOpenAI
@@ -12,12 +13,10 @@ from langchain_core.prompts import ChatPromptTemplate
 import httpx
 
 
-BASE_URL = "https://router.huggingface.co/v1"
-HUGGINGFACE_HUB_TOKEN ='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'
 
 openai_client = OpenAI(
-    base_url=BASE_URL,
-    api_key=HUGGINGFACE_HUB_TOKEN,
+    base_url=os.getenv("BASE_URL"),
+    api_key=os.getenv("OPENAI_API_KEY"),
     #http_client=httpx.AsyncClient(verify=False)
 )
 

@@ -36,4 +36,7 @@ You should reply in a format like:
     "TITLE_CRITERIA": ["criterion1", "criterion2", "..."] \\ the {num_title_criteria} binary title-based criteria
     "CONTENT_CRITERIA": ["criterion1", "criterion2", "..."] \\ the {num_abstract_criteria} binary content-based criteria
 }}
+
+## IMPORTANT
+Remove slash comments from your reply.
 '''
