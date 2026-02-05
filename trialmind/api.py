@@ -364,10 +364,11 @@ class LiteratureScreening:
             })
 
         # call llm
-        from langchain.pydantic_v1 import BaseModel, validator, Field, conlist
+        #from langchain.pydantic_v1 import BaseModel, validator, Field, conlist
+        from pydantic import BaseModel, validator, Field, conlist  # This is the new version
         from typing import Dict, Literal
         class PaperEvaluation(BaseModel):
-            evaluations: conlist(Literal['YES', 'NO', 'UNCERTAIN'], min_items=n_criteria, max_items=n_criteria) = Field(description=f"Evaluations for {n_criteria} criteria, must be of length {n_criteria}")
+            evaluations: conlist(Literal['YES', 'NO', 'UNCERTAIN'], min_length=n_criteria, max_length=n_criteria) = Field(description=f"Evaluations for {n_criteria} criteria, must be of length {n_criteria}")
         outputs = batch_function_call_llm(LITERATURE_SCREENING_FC, batch_inputs, PaperEvaluation, llm=llm, batch_size=batch_size)
 
         # try to fix the predictions if not met the output format
