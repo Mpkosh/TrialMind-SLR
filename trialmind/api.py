@@ -369,6 +369,8 @@ class LiteratureScreening:
         from typing import Dict, Literal
         class PaperEvaluation(BaseModel):
             evaluations: conlist(Literal['YES', 'NO', 'UNCERTAIN'], min_length=n_criteria, max_length=n_criteria) = Field(description=f"Evaluations for {n_criteria} criteria, must be of length {n_criteria}")
+            rationale: conlist(str,min_length=n_criteria, max_length=n_criteria) = Field(description="A rationale for each criteria evaluation") 
+            
         outputs = batch_function_call_llm(LITERATURE_SCREENING_FC, batch_inputs, PaperEvaluation, llm=llm, batch_size=batch_size)
         
         # try to fix the predictions if not met the output format

@@ -24,6 +24,13 @@ If the information within the provided paper content is insufficient to conclusi
 # RESPONSE FORMAT #
 Return the information in a JSON object containing a list of decisions for each of the {num_criteria} eligibility criteria. Each decision should directly correspond to one of the criteria and be listed in the order they are presented. Ensure to use "UNCERTAIN" wherever the paper does not explicitly support a "YES" or "NO" decision.
 
-The format:
-{fin_format}
+For example:
+```json
+{{
+    "evaluations": ["YES", "NO", "UNCERTAIN", "YES", "YES", ...]
+    "rationale": ["The title includes...","...","...","...","...","...",]
+}}
+```
+
+MANDATORY: Every single response then continues with valid JSON output complying to the included JSON schema, and will be validated, allowing no deviation.
 """

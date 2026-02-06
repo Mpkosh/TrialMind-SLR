@@ -65,6 +65,12 @@ async def api_call_single(client: AsyncOpenAI, model: str, messages: list[dict],
 async def api_function_call_single(client: AsyncOpenAI, model: str, messages: list[dict], tools: list[dict], temperature: float = 0.0, thinking: bool = False, **kwargs):
     # Call the API
     print('api_function_call_single', client.base_url)
+    
+    # Call the API
+    ###
+    #batch_inputs,prompt_template = messages
+    print(messages)
+    
     if not thinking:
         messages[0]['content'] = '/no_think '+messages[0]['content']
         

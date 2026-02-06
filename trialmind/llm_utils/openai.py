@@ -53,7 +53,11 @@ def api_call_single(client: OpenAI, model: str, messages: list[dict], temperatur
                 #reraise=True
                )
 def api_function_call_single(client: OpenAI, model: str, messages: list[dict], tools: list[dict], temperature: float = 0.0,thinking=False, **kwargs):
-    # Call the API
+
+        # Call the API
+    ###
+    batch_inputs,prompt_template = messages
+    
     if not thinking:
         messages[0]['content'] = '/no_think '+messages[0]['content']
     response = client.chat.completions.create(

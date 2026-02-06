@@ -4,6 +4,7 @@ from langchain_core.utils.function_calling import convert_to_openai_function
 from .llm_utils.openai import call_openai
 from .llm_utils.openai_async import batch_call_openai
 from .llm_utils.openai_async import batch_function_call_openai
+import numpy as np
 
 def call_llm(
     prompt_template,
@@ -129,6 +130,7 @@ def batch_function_call_llm(
             dict: The structured data output from the LLM model.
     """
     schema_desc = convert_to_openai_function(schema)
+    print(schema_desc)
     tools = [
         {
             "type": "function",
@@ -136,6 +138,7 @@ def batch_function_call_llm(
         }
     ]
     batch_messages = _batch_inputs_to_messages(prompt_template=prompt_template, batch_inputs=batch_inputs)
+    
     if batch_size is not None:
         results = []
         for i in range(0, len(batch_messages), batch_size):
