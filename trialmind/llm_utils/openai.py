@@ -32,14 +32,14 @@ openai_client = OpenAI(
 )
 
 @tenacity.retry(#wait=tenacity.wait_random_exponential(min=60, max=600),
-                stop=tenacity.stop_after_attempt(1), 
+                stop=tenacity.stop_after_attempt(2), 
                 #reraise=True
                )
 def api_call_single(client: OpenAI, model: str, messages: list[dict], temperature: float = 0.0, thinking=False, **kwargs):
     # Call the API
     if not thinking:
         messages[0]['content'] = '/no_think '+messages[0]['content']
-    print(client.base_url)
+    print('api_call_single', client.base_url)
     response = client.chat.completions.create(
         model=model,
         messages=messages,  # Ensure messages is a list
@@ -49,7 +49,7 @@ def api_call_single(client: OpenAI, model: str, messages: list[dict], temperatur
     return response
 
 @tenacity.retry(#wait=tenacity.wait_random_exponential(min=60, max=600),
-                stop=tenacity.stop_after_attempt(1), 
+                stop=tenacity.stop_after_attempt(2), 
                 #reraise=True
                )
 def api_function_call_single(client: OpenAI, model: str, messages: list[dict], tools: list[dict], temperature: float = 0.0,thinking=False, **kwargs):
@@ -69,7 +69,7 @@ def call_openai(llm: str, messages: list[dict], temperature: float = 0.0,thinkin
     """
     Call the OpenAI API asynchronously to a list of messages using high-level asyncio APIs.
     """
-    print(os.getenv("BASE_URL"))
+    print('call_openai', os.getenv("BASE_URL"))
     model = llm#OPENAI_MODEL_NAME_MAP.get(llm)
     if model is None:
         raise ValueError(f"Unsupported LLM model: {llm}")

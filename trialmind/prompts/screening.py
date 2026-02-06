@@ -22,11 +22,8 @@ If the information within the provided paper content is insufficient to conclusi
 - Criteria for Inclusion: {criteria_text}
 
 # RESPONSE FORMAT #
-You are required to output a JSON object containing a list of decisions for each of the {num_criteria} eligibility criteria. Each decision should directly correspond to one of the criteria and be listed in the order they are presented. Ensure to use "UNCERTAIN" wherever the paper does not explicitly support a "YES" or "NO" decision.
-For example:
-```json
-{{
-    "evaluations": ["YES", "NO", "UNCERTAIN", "YES", "YES", ...] \\ List of {num_criteria} decisions
-}}
-```
+Return the information in a JSON object containing a list of decisions for each of the {num_criteria} eligibility criteria. Each decision should directly correspond to one of the criteria and be listed in the order they are presented. Ensure to use "UNCERTAIN" wherever the paper does not explicitly support a "YES" or "NO" decision.
+
+The format:
+{fin_format}
 """

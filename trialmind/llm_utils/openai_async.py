@@ -40,12 +40,12 @@ async_openai_client = AsyncOpenAI(
 
 
 @tenacity.retry(#wait=tenacity.wait_random_exponential(min=60, max=600),
-                stop=tenacity.stop_after_attempt(1), 
+                stop=tenacity.stop_after_attempt(2), 
                 #reraise=True
                )
 async def api_call_single(client: AsyncOpenAI, model: str, messages: list[dict], temperature: float = 0.0, thinking: bool = False, **kwargs):
     # Call the API
-    print(client.base_url)
+    print('api_call_single', client.base_url)
     if not thinking:
         messages[0]['content'] = '/no_think '+messages[0]['content']
     
@@ -59,12 +59,12 @@ async def api_call_single(client: AsyncOpenAI, model: str, messages: list[dict],
     return response
 
 @tenacity.retry(#wait=tenacity.wait_random_exponential(min=60, max=600),
-                stop=tenacity.stop_after_attempt(1), 
+                stop=tenacity.stop_after_attempt(2), 
                 #reraise=True
                )
 async def api_function_call_single(client: AsyncOpenAI, model: str, messages: list[dict], tools: list[dict], temperature: float = 0.0, thinking: bool = False, **kwargs):
     # Call the API
-    print(client.base_url)
+    print('api_function_call_single', client.base_url)
     if not thinking:
         messages[0]['content'] = '/no_think '+messages[0]['content']
         
@@ -130,6 +130,8 @@ def batch_function_call_openai(batch_messages, llm, tools, temperature,thinking=
             seed=0,
             thinking=thinking
             )
+        print(batch_messages)
+        print('batch_function_call_openai in asynch',results)
     else:
         raise ValueError(f"Unknown llm: {llm}")
     parsed_results = []
@@ -137,6 +139,7 @@ def batch_function_call_openai(batch_messages, llm, tools, temperature,thinking=
         try:
             # parse the outputs
             response_message = result.choices[0].message
+            print('response_message', response_message)
             tool_calls = response_message.tool_calls
             outputs = {}
             if tool_calls:
@@ -144,6 +147,7 @@ def batch_function_call_openai(batch_messages, llm, tools, temperature,thinking=
             parsed_results.append(outputs)
         except:
             parsed_results.append({})
+    print('parsed_results in asynch',parsed_results)
     return parsed_results
 
 

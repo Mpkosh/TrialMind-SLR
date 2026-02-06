@@ -29,14 +29,13 @@ but the information required to answer them will be more detailed and is expecte
 CONTENT_CRITERIA n: ...
 
 ## Reply Format
-You should reply in a format like:
+Return the information in the following JSON-format.
 
+```json
 {{
-    "ELIGIBILITY_ANALYSIS": ["rationale1", "rationale12", ...] \\ the bullet points of your analysis
-    "TITLE_CRITERIA": ["criterion1", "criterion2", "..."] \\ the {num_title_criteria} binary title-based criteria
-    "CONTENT_CRITERIA": ["criterion1", "criterion2", "..."] \\ the {num_abstract_criteria} binary content-based criteria
+    "ELIGIBILITY_ANALYSIS": ["rationale1", "rationale12", ...],
+    "TITLE_CRITERIA": ["criterion1", "criterion2", "..."] ,
+    "CONTENT_CRITERIA": ["criterion1", "criterion2", "..."] 
 }}
-
-## IMPORTANT
-Remove slash comments from your reply.
+```
 '''

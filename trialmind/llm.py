@@ -97,11 +97,11 @@ def batch_function_call_llm(
     prompt_template,
     batch_inputs,
     schema,
-    llm: Union[str, Literal[
-        "openai-gpt-35",
-        "openai-gpt-4",
-        "openai-gpt-4o",
-    ]],
+    llm: str,#Union[str, Literal[
+        #"openai-gpt-35",
+        #"openai-gpt-4",
+        #"openai-gpt-4o",
+    #]],
     temperature=0.0,
     batch_size=None,
 ):
