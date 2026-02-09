@@ -75,6 +75,11 @@ def call_openai(llm: str, messages: list[dict], temperature: float = 0.0,thinkin
     """
     print('call_openai', os.getenv("BASE_URL"))
     model = llm#OPENAI_MODEL_NAME_MAP.get(llm)
+    openai_client = OpenAI(
+        base_url=os.getenv("BASE_URL"),
+        api_key=os.getenv("OPENAI_API_KEY"),
+        http_client=httpx.Client(http2=True, verify=False)
+    )
     if model is None:
         raise ValueError(f"Unsupported LLM model: {llm}")
     response = api_call_single(openai_client, model, messages, temperature,thinking, **kwargs)

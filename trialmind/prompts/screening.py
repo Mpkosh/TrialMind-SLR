@@ -27,8 +27,8 @@ Return the information in a JSON object containing a list of decisions for each 
 For example:
 ```json
 {{
-    "evaluations": ["YES", "NO", "UNCERTAIN", "YES", "YES", ...]
-    "rationale": ["The title includes...","...","...","...","...","...",]
+    "evaluations": ["YES", "NO", "UNCERTAIN", "YES", "YES", ...],
+    "rationale": ["The title includes...","...","...","...","...",...]
 }}
 ```
 

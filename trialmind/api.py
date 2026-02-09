@@ -33,6 +33,7 @@ from .prompts.screening import LITERATURE_SCREENING_FC
 from .prompts.screen_criteria import SCREENING_CRITERIA_GENERATION
 from .pubmed import ReqPubmedFull, ReqPubmedID
 #from .sandbox import E2BSandbox
+from langchain_core.output_parsers import PydanticOutputParser
 
 
 from logging import getLogger
@@ -204,6 +205,18 @@ class ScreeningCriteriaGeneration:
         llm: str="gpt-4",
         thinking: bool = False,
         ):
+        '''
+        both = num_title_criteria+num_abstract_criteria
+        from pydantic import BaseModel, validator, Field, conlist
+        class ScreeningCriteria(BaseModel):
+            TITLE_CRITERIA: conlist(str, min_length=num_title_criteria, max_length=num_title_criteria) = Field(description=f"Binary title-based criterias")
+            CONTENT_CRITERIA: conlist(str,min_length=num_abstract_criteria, max_length=num_abstract_criteria) = Field(description="Binary content-based criterias")
+            ELIGIBILITY_ANALYSIS: conlist(str,min_length=both, max_length=both) = Field(description="A rationale for each criteria evaluation")
+            
+        parser = PydanticOutputParser(pydantic_object=ScreeningCriteria)
+        screening_gen_prompt = SCREENING_CRITERIA_GENERATION+parser.get_format_instructions()
+        print(screening_gen_prompt) 
+        '''
         outputs = call_llm(
             SCREENING_CRITERIA_GENERATION, 
             {"P": population, 
@@ -306,7 +319,8 @@ class StudyCharacteristicsExtraction:
         
         # call llm
         outputs = batch_call_llm(STUDY_FIELDS_EXTRACTION, batch_inputs, llm=llm, batch_size=batch_size, thinking=thinking)
-        parsed_outputs = parse_json_outputs(outputs)
+        
+        parsed_outputs = extract_json(outputs)
 
         # attach the cited blocks to the outputs
         cited_parsed_outputs = []
@@ -372,7 +386,9 @@ class LiteratureScreening:
             rationale: conlist(str,min_length=n_criteria, max_length=n_criteria) = Field(description="A rationale for each criteria evaluation") 
             
         outputs = batch_function_call_llm(LITERATURE_SCREENING_FC, batch_inputs, PaperEvaluation, llm=llm, batch_size=batch_size)
-        
+        print('\nOUTPUTS: ', outputs)
+        outputs = parse_json_outputs(outputs)
+        print('\nOUTPUTS: ', outputs)
         # try to fix the predictions if not met the output format
         parsed_outputs = self._check_outputs(outputs, n_criteria)
         return parsed_outputs

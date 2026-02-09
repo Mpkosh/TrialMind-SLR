@@ -11,13 +11,13 @@ from openai import AsyncOpenAI,OpenAI
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 import httpx
-
+from trialmind.llm_utils.openai_async import batch_call_openai
 
 
 openai_client = OpenAI(
     base_url=os.getenv("BASE_URL"),
     api_key=os.getenv("OPENAI_API_KEY"),
-    #http_client=httpx.AsyncClient(verify=False)
+    http_client=httpx.Client(verify=False)
 )
 
 
@@ -35,16 +35,21 @@ def info_from_doc(file_path):
               flags=re.DOTALL).groups()[0]
     treatement = re.findall('\\n\\d+ (.*)\n', treat_table)
     treatement = ', '.join(treatement)
-    fin_condition = eng_translate(model='Qwen/Qwen3-32B', text=text)
-    treatements_eng = eng_translate(model='Qwen/Qwen3-32B', text=treatement).split(',')
+    
+    messages = [{'role':'system', 'content':'You are a helpful assistant /no_think'},
+                {'role':'user', 'content':f"Translate into English: {text}"}]
+    
+    fin_condition = use_llm(os.getenv("MODEL_NAME"), messages)
+    messages = [{'role':'system', 'content':'You are a helpful assistant /no_think'},
+                {'role':'user', 'content':f"Translate into English: {treatement}"}]
+    treatements_eng = use_llm(os.getenv("MODEL_NAME"), messages).split(',')
     treatements_eng = [i.strip() for i in treatements_eng]
     
     return fin_condition,treatements_eng
 
 
-def eng_translate(model='Qwen/Qwen3-32B', text=''):
-    messages = [{'role':'system', 'content':'You are a helpful assistant /no_think'},
-               {'role':'user', 'content':f"Translate into English: {text}"}]
+def use_llm(model='Qwen/Qwen3-32B', messages=[]):
+    
     response = openai_client.chat.completions.create(
         model=model,
         messages=messages,
@@ -53,6 +58,22 @@ def eng_translate(model='Qwen/Qwen3-32B', text=''):
     fin = response.choices[0].message.content
     fin = fin.strip('<think>\n\n</think>\n\n')
     return fin
+
+
+
+
+def results_ct(all_studies):
+    chosen = all_studies[all_studies.results==True]
+    outcome_participants = [obj for item_main in chosen.outcomes.values for obj in item_main 
+                        if(obj.get('unitOfMeasure','') == 'Participants')] 
+    messages = []
+    for i in outcome_participants:
+        messages.append([{'role':'system', 'content':'You are a helpful medical assistant. Extract information about the efficiency statistics from each outcome measure. Give: 1) a concise description of results with percentages and 2) a short description of study objectives /no_think'},
+                {'role':'user', 'content':f"{i}"}])
+    
+    results = batch_call_openai(messages, os.getenv('MODEL_NAME'), int(os.getenv('TEMPERATURE')), thinking=False)
+    return results
+    
 
 
 def get_clinicaltrials(query_term, query_intr, max_studies=20):
@@ -73,6 +94,7 @@ def get_clinicaltrials(query_term, query_intr, max_studies=20):
         'Phase',
         'OverallStatus',
         'StudyType',
+        'briefSummary',
         #'LastKnownStatus',
 
     ]
@@ -92,8 +114,8 @@ def get_clinicaltrials(query_term, query_intr, max_studies=20):
     results_studies = []
     no_results_studies = []
     next_page_token='a'
-
-    while next_page_token:
+    page_temp = 0
+    while next_page_token and page_temp<max_studies:
 
         #print(f'--- page: {page} ---')
 
@@ -133,11 +155,18 @@ def get_clinicaltrials(query_term, query_intr, max_studies=20):
         except KeyError:
             next_page_token=''
             pass
+        page_temp+=1
         
     all_studies = pd.json_normalize(all_studies)
-    all_studies.columns = ['results','id','title','status',
+    if all_studies.shape[1]==8:
+        all_studies.columns = ['results','id','title','status',
                            'conditions','study_type','phases',
-                           'interventions','outcomes']
+                           'interventions']
+        all_studies['outcomes']=None
+    else:
+        all_studies.columns = ['results','id','title','status',
+                               'conditions','study_type','phases',
+                               'interventions','outcomes']
     # раскрываем препараты из описания клин.испытаний
 
     # https://clinicaltrials.gov/study/NCT03792568 
@@ -148,11 +177,14 @@ def get_clinicaltrials(query_term, query_intr, max_studies=20):
     all_studies['interventions'] = all_studies['interventions'].apply(lambda d: d if isinstance(d, list) else [{}]
                                   ).apply(lambda x: \
                                           [obj['name'].lower() for obj in x \
-                                               if obj.get('type','') in ['BIOLOGICAL','DRUG'] ])
+                                               if obj.get('type','') in [#'BIOLOGICAL',
+        'DRUG'] ])
 
 
 
     return all_studies
+
+
 
 
 def treat_studies(treatement, all_studies):

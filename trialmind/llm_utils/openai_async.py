@@ -45,7 +45,7 @@ async_openai_client = AsyncOpenAI(
                )
 async def api_call_single(client: AsyncOpenAI, model: str, messages: list[dict], temperature: float = 0.0, thinking: bool = False, **kwargs):
     # Call the API
-    print('api_call_single', client.base_url)
+    print('\napi_call_single', client.base_url)
     if not thinking:
         messages[0]['content'] = '/no_think '+messages[0]['content']
     
@@ -64,7 +64,7 @@ async def api_call_single(client: AsyncOpenAI, model: str, messages: list[dict],
                )
 async def api_function_call_single(client: AsyncOpenAI, model: str, messages: list[dict], tools: list[dict], temperature: float = 0.0, thinking: bool = False, **kwargs):
     # Call the API
-    print('api_function_call_single', client.base_url)
+    print('\napi_function_call_single', client.base_url)
     
     # Call the API
     ###
@@ -100,6 +100,12 @@ async def apply_function_call_async(client: AsyncOpenAI, model: str, messages_li
     return results
 
 def batch_call_openai(batch_messages, llm, temperature, thinking=False):
+    async_openai_client = AsyncOpenAI(
+        base_url=os.getenv("BASE_URL"),
+        api_key=os.getenv("OPENAI_API_KEY"),
+        http_client=httpx.AsyncClient(verify=False)
+    )
+
     model = llm#OPENAI_MODEL_NAME_MAP.get(llm)
     if model is not None:
         results = _async_execute(
@@ -124,6 +130,12 @@ def batch_call_openai(batch_messages, llm, temperature, thinking=False):
     return parsed_results
 
 def batch_function_call_openai(batch_messages, llm, tools, temperature,thinking=False):
+    async_openai_client = AsyncOpenAI(
+        base_url=os.getenv("BASE_URL"),
+        api_key=os.getenv("OPENAI_API_KEY"),
+        http_client=httpx.AsyncClient(verify=False)
+    )
+ 
     model = llm#OPENAI_MODEL_NAME_MAP.get(llm)
     if model is not None:
         results = _async_execute(
@@ -136,24 +148,27 @@ def batch_function_call_openai(batch_messages, llm, tools, temperature,thinking=
             seed=0,
             thinking=thinking
             )
-        print(batch_messages)
-        print('batch_function_call_openai in asynch',results)
+        #print('batch_function_call_openai in asynch',results)
     else:
         raise ValueError(f"Unknown llm: {llm}")
+    print('\nTOOLS: ',tools)
     parsed_results = []
     for result in results:
         try:
             # parse the outputs
             response_message = result.choices[0].message
-            print('response_message', response_message)
+            print('\nresponse_message', response_message)
             tool_calls = response_message.tool_calls
             outputs = {}
             if tool_calls:
                 outputs = json.loads(tool_calls[0].function.arguments)
+            else:
+                print('!!')
+                outputs = response_message.content
             parsed_results.append(outputs)
         except:
             parsed_results.append({})
-    print('parsed_results in asynch',parsed_results)
+    print('\nparsed_results in asynch',parsed_results)
     return parsed_results
 
 

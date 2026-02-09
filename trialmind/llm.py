@@ -5,6 +5,8 @@ from .llm_utils.openai import call_openai
 from .llm_utils.openai_async import batch_call_openai
 from .llm_utils.openai_async import batch_function_call_openai
 import numpy as np
+import re
+
 
 def call_llm(
     prompt_template,
@@ -89,7 +91,7 @@ def batch_call_llm(
             batch_results = batch_call_openai(batch_messages[i:i+batch_size], llm=llm, temperature=temperature, thinking=thinking)
             results.extend(batch_results)
     else:
-        results = batch_call_openai(batch_messages, llm=llm, temperature=temperature,
+        results = batch_call_openai(batch_messages, llm=os.getenv('MODEL_NAME'), temperature=os.getenv('TEMPERATURE'),
                                    thinking=thinking)
     return results
 
@@ -153,14 +155,16 @@ def _batch_inputs_to_messages(prompt_template, batch_inputs):
     # build messages for the openai
     batch_messages = []
     for i, batch_input in enumerate(batch_inputs):
+        #fin_idx = re.search('Reply Format', prompt_template).start()
         prompt_content = prompt_template.format(**batch_input)
         messages = [
             {
                 "role": "user",
-                "content": prompt_content
+                "content": prompt_content#+prompt_template[fin_idx:]
             }
         ]
         batch_messages.append(messages)
+    #print('\nbatch_messages: ', batch_messages)
     return batch_messages
 
 def _wrap_response_openai(response):
