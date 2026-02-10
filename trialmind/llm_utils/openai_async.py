@@ -69,7 +69,7 @@ async def api_function_call_single(client: AsyncOpenAI, model: str, messages: li
     # Call the API
     ###
     #batch_inputs,prompt_template = messages
-    print(messages)
+    #print(tools[0])
     
     if not thinking:
         messages[0]['content'] = '/no_think '+messages[0]['content']
@@ -77,8 +77,9 @@ async def api_function_call_single(client: AsyncOpenAI, model: str, messages: li
     response = await client.chat.completions.create(
         model=model,
         messages=messages,
-        tools=tools,
+        #tools=tools,
         temperature=temperature,
+        extra_body={"structured_outputs": {"json": tools[0]}},
         **kwargs
     )
     return response
@@ -151,7 +152,8 @@ def batch_function_call_openai(batch_messages, llm, tools, temperature,thinking=
         #print('batch_function_call_openai in asynch',results)
     else:
         raise ValueError(f"Unknown llm: {llm}")
-    print('\nTOOLS: ',tools)
+    #print('\nTOOLS: ',tools)
+    '''
     parsed_results = []
     for result in results:
         try:
@@ -168,6 +170,14 @@ def batch_function_call_openai(batch_messages, llm, tools, temperature,thinking=
             parsed_results.append(outputs)
         except:
             parsed_results.append({})
+    '''
+    parsed_results = []
+    for result in results:
+        try:
+            content = result.choices[0].message.content
+            parsed_results.append(content)
+        except:
+            parsed_results.append("")
     print('\nparsed_results in asynch',parsed_results)
     return parsed_results
 

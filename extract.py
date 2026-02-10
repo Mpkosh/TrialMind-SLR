@@ -94,7 +94,7 @@ def get_clinicaltrials(query_term, query_intr, max_studies=20):
         'Phase',
         'OverallStatus',
         'StudyType',
-        'briefSummary',
+        'BriefSummary',
         #'LastKnownStatus',
 
     ]
@@ -149,7 +149,7 @@ def get_clinicaltrials(query_term, query_intr, max_studies=20):
         # next page
         #next_page_token = response.headers.get('x-next-page')  # (probably) for `CSV`
             next_page_token = data['nextPageToken']                 # for `JSON`
-            print(data['nextPageToken'])
+            #print(data['nextPageToken'])
         #print('x-next-page', next_page_token)    
             params['pageToken'] = next_page_token
         except KeyError:
@@ -158,15 +158,11 @@ def get_clinicaltrials(query_term, query_intr, max_studies=20):
         page_temp+=1
         
     all_studies = pd.json_normalize(all_studies)
-    if all_studies.shape[1]==8:
-        all_studies.columns = ['results','id','title','status',
-                           'conditions','study_type','phases',
-                           'interventions']
-        all_studies['outcomes']=None
-    else:
-        all_studies.columns = ['results','id','title','status',
-                               'conditions','study_type','phases',
-                               'interventions','outcomes']
+    all_studies.columns = [i.split('.')[-1] for i in \
+                           all_studies.columns]
+
+    if 'outcomeMeasures' not in all_studies.columns:
+        all_studies['outcomeMeasures']=None 
     # раскрываем препараты из описания клин.испытаний
 
     # https://clinicaltrials.gov/study/NCT03792568 

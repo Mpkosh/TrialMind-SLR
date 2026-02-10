@@ -29,8 +29,8 @@ from .prompts.extraction import (
     STUDY_RESULTS_STANDARDIZATION,
     RESULT_TABLE_TEMPLATE,
     )
-from .prompts.screening import LITERATURE_SCREENING_FC
-from .prompts.screen_criteria import SCREENING_CRITERIA_GENERATION
+from .prompts.screening import LITERATURE_SCREENING_FC,CT_SCREENING_FC
+from .prompts.screen_criteria import SCREENING_CRITERIA_GENERATION, SCREENING_CRITERIA_CT_GENERATION
 from .pubmed import ReqPubmedFull, ReqPubmedID
 #from .sandbox import E2BSandbox
 from langchain_core.output_parsers import PydanticOutputParser
@@ -41,7 +41,7 @@ logger = getLogger(__name__)
 
 def extract_json(input_text):
     # Pattern to match content between ```json and ```
-    json_pattern = r"```json\n([\s\S]*?)\n```"
+    json_pattern = r"```json([\s\S]*?)```"
     match = re.search(json_pattern, input_text)
 
     if match:
@@ -242,7 +242,70 @@ class ScreeningCriteriaGeneration:
             "eligibility_analysis": eligibility_analysis
         }
 
+class ScreeningCriteriaCTGeneration:
+    """
+    Input the user's input research question, generate the screening criteria for the screening clinical studies.
 
+    Args:
+        population (str): The population of the research question.
+        intervention (str): The intervention of the research question.
+        comparator (str): The comparator of the research question.
+        outcome (str): The outcome of the research question.
+        num_title_criteria (int): The number of title criteria to generate. Default is 3.
+        num_abstract_criteria (int): The number of abstract criteria to generate. Default is 3.
+        llm (str): The language model to use for the screening criteria generation. Default is "gpt-4".
+    """
+    def __init__(self):
+        pass
+
+    def run(
+        self,
+        population: str,
+        intervention: str,
+        comparator: str,
+        outcome: str,
+        num_title_criteria: int=3,
+        num_abstract_criteria: int=3,
+        llm: str="gpt-4",
+        thinking: bool = False,
+        ):
+        '''
+        both = num_title_criteria+num_abstract_criteria
+        from pydantic import BaseModel, validator, Field, conlist
+        class ScreeningCriteria(BaseModel):
+            TITLE_CRITERIA: conlist(str, min_length=num_title_criteria, max_length=num_title_criteria) = Field(description=f"Binary title-based criterias")
+            CONTENT_CRITERIA: conlist(str,min_length=num_abstract_criteria, max_length=num_abstract_criteria) = Field(description="Binary content-based criterias")
+            ELIGIBILITY_ANALYSIS: conlist(str,min_length=both, max_length=both) = Field(description="A rationale for each criteria evaluation")
+            
+        parser = PydanticOutputParser(pydantic_object=ScreeningCriteria)
+        screening_gen_prompt = SCREENING_CRITERIA_GENERATION+parser.get_format_instructions()
+        print(screening_gen_prompt) 
+        '''
+        outputs = call_llm(
+            SCREENING_CRITERIA_CT_GENERATION, 
+            {"P": population, 
+             "I": intervention, 
+             "C": comparator, 
+             "O": outcome, 
+             "num_title_criteria": num_title_criteria, 
+             "num_abstract_criteria": num_abstract_criteria
+            }, 
+            llm=llm,
+            thinking=thinking,
+            )
+        print(outputs)
+        if outputs is not None:
+            outputs = parse_json_outputs([outputs])[0]
+        title_criteria = outputs.get("TITLE_CRITERIA", [])
+        content_criteria = outputs.get("CONTENT_CRITERIA", [])
+        eligibility_analysis = outputs.get("ELIGIBILITY_ANALYSIS", [])
+
+        return {
+            "title_criteria": title_criteria,
+            "content_criteria": content_criteria,
+            "eligibility_analysis": eligibility_analysis
+        }
+    
 class StudyCharacteristicsExtraction:
     """
     Extract the structured data from a clinical study, based on user's request if provided.
@@ -409,6 +472,80 @@ class LiteratureScreening:
             parsed_outputs.append(evaluations)
         return parsed_outputs
 
+    
+class CTScreening:
+    """Pass the papers through the screening criteria to determine if they are relevant to the research question.
+    The input contains a list of criteria for screening the papers, and the papers to be screened.
+
+    Args:
+        papers: A list of clinical study papers' raw content in text, to be screened.
+        criteria: A list of screening criteria for the papers.
+        llm: The language model to use for the screening. Default is "gpt-4".
+    """
+    def __init__(self):
+        pass
+
+    def run(self,
+        population: str,
+        intervention: str,
+        comparator: str,
+        outcome: str,
+        papers: list[str],
+        criteria: list[str],
+        llm: str="gpt-4",
+        batch_size: int = None,
+        ):
+
+        # build the criteria text with index
+        criteria_text = [f"{idx+1}. {c}" for idx, c in enumerate(criteria)]
+        n_criteria = len(criteria_text)
+
+        # build batch inputs
+        batch_inputs = []
+        for paper in papers:
+            batch_inputs.append({
+                "P": population,
+                "I": intervention,
+                "C": comparator,
+                "O": outcome,
+                "paper_content": paper,
+                "criteria_text": criteria_text,
+                "num_criteria": n_criteria
+            })
+
+        # call llm
+        #from langchain.pydantic_v1 import BaseModel, validator, Field, conlist
+        from pydantic import BaseModel, validator, Field, conlist  # This is the new version
+        from typing import Dict, Literal
+        class PaperEvaluation(BaseModel):
+            evaluations: conlist(Literal['YES', 'NO', 'UNCERTAIN'], min_length=n_criteria, max_length=n_criteria) = Field(description=f"Evaluations for {n_criteria} criteria")
+            rationale: conlist(str,min_length=n_criteria, max_length=n_criteria) = Field(description="A rationale for each criteria evaluation") 
+        print(CT_SCREENING_FC)    
+        outputs = batch_function_call_llm(CT_SCREENING_FC, batch_inputs, [PaperEvaluation.model_json_schema()], llm=llm, batch_size=batch_size)
+        #print('\nOUTPUTS: ', outputs)
+        outputs = parse_json_outputs(outputs)
+        print('\nOUTPUTS after json extr: ', outputs)
+        # try to fix the predictions if not met the output format
+        #parsed_outputs = self._check_outputs(outputs, n_criteria)
+        return outputs
+    
+    def _check_outputs(self, outputs, n_criteria):
+        # check if the outputs are in the correct format
+        parsed_outputs = []
+        for output in outputs:
+            try:
+                evaluations = output.get("evaluations", [])
+                if len(evaluations) != n_criteria:
+                    evaluations = ["UNCERTAIN"] * n_criteria
+                else:
+                    evaluations = [e.upper() for e in evaluations]
+                    evaluations = [e if e in ["YES", "NO", "UNCERTAIN"] else "UNCERTAIN" for e in evaluations]
+            except:
+                evaluations = ["UNCERTAIN"] * n_criteria
+            parsed_outputs.append(evaluations)
+        return parsed_outputs
+    
+    
 class StudyResultExtraction:
     """Extract the target outcome measurement results from the given papers.
     

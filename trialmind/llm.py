@@ -131,6 +131,7 @@ def batch_function_call_llm(
         Returns:
             dict: The structured data output from the LLM model.
     """
+    '''
     schema_desc = convert_to_openai_function(schema)
     print(schema_desc)
     tools = [
@@ -139,6 +140,8 @@ def batch_function_call_llm(
             "function": schema_desc,
         }
     ]
+    '''
+    tools = schema
     batch_messages = _batch_inputs_to_messages(prompt_template=prompt_template, batch_inputs=batch_inputs)
     
     if batch_size is not None:
