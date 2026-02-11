@@ -25,7 +25,7 @@ from .prompts.search_query import (
 from .prompts.extraction import (
     STUDY_RESULTS_FORMATTING,
     RESULT_TABLE_EXTRACTION,
-    STUDY_FIELDS_EXTRACTION,
+    STUDY_FIELDS_EXTRACTION_2,
     STUDY_RESULTS_STANDARDIZATION,
     RESULT_TABLE_TEMPLATE,
     )
@@ -41,12 +41,21 @@ logger = getLogger(__name__)
 
 def extract_json(input_text):
     # Pattern to match content between ```json and ```
-    json_pattern = r"```json([\s\S]*?)```"
+    #json_pattern = r"```json([\s\S]*?)```"
+    json_pattern = r"\`\`\`json([\s\S]*?)\`\`\`"
     match = re.search(json_pattern, input_text)
 
     if match:
         # Extract JSON content between ```json and ```
         return match.group(1)
+    
+    
+    elif re.search(r"\`\`\`json([\s\S]*?)", input_text):
+        input_text=input_text+'```'
+        match = re.search(json_pattern, input_text)
+        if match:
+            # Extract JSON content between ```json and ```
+            return match.group(1)
     else:
         # Pattern to match content between {{ and }}
         curly_pattern = r"\{\{([\s\S]*?)\}\}"
@@ -72,6 +81,7 @@ def parse_json_outputs(outputs: List[str]) -> List[Dict]:
         try:
             output = json.loads(output)
         except:
+            
             output = {}
         parsed_outputs.append(output)
     return parsed_outputs
@@ -379,12 +389,30 @@ class StudyCharacteristicsExtraction:
                 "paper_content": combined,
                 "fields": fields_info
             })
+            
+        from pydantic import BaseModel, validator, Field, conlist  # This is the new version
+        from typing import Dict, Literal
+        class FieldResult(BaseModel):
+            name: str = Field(description='Field name that accurately represents the content of the field based on its description.',
+                             max_length=25)
+            value: str = Field(description='Extracted information from the text based on the field description.',
+                              max_length=50)
+            source_id: conlist(int,min_length=1, max_length=3) = Field(description='Cited document IDs.')
+        class Results(BaseModel):
+            fieldresult: list[FieldResult]#FieldResult
+            
+        print(STUDY_FIELDS_EXTRACTION_2)
+        outputs = batch_function_call_llm(STUDY_FIELDS_EXTRACTION_2, batch_inputs, 
+                                 [Results.model_json_schema()],
+                                 llm=llm, batch_size=batch_size)
         
         # call llm
-        outputs = batch_call_llm(STUDY_FIELDS_EXTRACTION, batch_inputs, llm=llm, batch_size=batch_size, thinking=thinking)
-        
-        parsed_outputs = extract_json(outputs)
-
+        #outputs = batch_call_llm(STUDY_FIELDS_EXTRACTION_2, batch_inputs, 
+        #                         llm=llm, batch_size=batch_size, thinking=thinking)
+        print('\noutputs:',outputs)
+        #parsed_outputs = extract_json(outputs[0])
+        parsed_outputs = parse_json_outputs(outputs)
+        print('\nparsed_outputs:',parsed_outputs)
         # attach the cited blocks to the outputs
         cited_parsed_outputs = []
         for i, output in enumerate(parsed_outputs):
@@ -394,6 +422,7 @@ class StudyCharacteristicsExtraction:
                 src_ids = field_output.get("source_id", [])
                 cited = []
                 for src_id in src_ids:
+                    src_id = int(src_id) # we have id as str!
                     cited.append(blocks[src_id])
                 field_output["cited_blocks"] = cited
                 new_output.append(field_output)
@@ -445,16 +474,16 @@ class LiteratureScreening:
         from pydantic import BaseModel, validator, Field, conlist  # This is the new version
         from typing import Dict, Literal
         class PaperEvaluation(BaseModel):
-            evaluations: conlist(Literal['YES', 'NO', 'UNCERTAIN'], min_length=n_criteria, max_length=n_criteria) = Field(description=f"Evaluations for {n_criteria} criteria, must be of length {n_criteria}")
-            rationale: conlist(str,min_length=n_criteria, max_length=n_criteria) = Field(description="A rationale for each criteria evaluation") 
-            
-        outputs = batch_function_call_llm(LITERATURE_SCREENING_FC, batch_inputs, PaperEvaluation, llm=llm, batch_size=batch_size)
-        print('\nOUTPUTS: ', outputs)
+            evaluations: conlist(Literal['YES', 'NO', 'UNCERTAIN'], min_length=n_criteria, max_length=n_criteria) = Field(description=f"Evaluations for {n_criteria} criteria")
+            rationale: conlist(str,min_length=n_criteria, max_length=n_criteria) = Field(description="A rationale for each criteria evaluation")
+        outputs = batch_function_call_llm(LITERATURE_SCREENING_FC, batch_inputs, [PaperEvaluation.model_json_schema()], llm=llm, batch_size=batch_size)    
+        #outputs = batch_function_call_llm(LITERATURE_SCREENING_FC, batch_inputs, PaperEvaluation, llm=llm, batch_size=batch_size)
+        #print('\nOUTPUTS: ', outputs)
         outputs = parse_json_outputs(outputs)
         print('\nOUTPUTS: ', outputs)
         # try to fix the predictions if not met the output format
-        parsed_outputs = self._check_outputs(outputs, n_criteria)
-        return parsed_outputs
+        #parsed_outputs = self._check_outputs(outputs, n_criteria)
+        return outputs
     
     def _check_outputs(self, outputs, n_criteria):
         # check if the outputs are in the correct format

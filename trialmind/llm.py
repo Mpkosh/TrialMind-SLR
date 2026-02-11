@@ -83,8 +83,9 @@ def batch_call_llm(
     Returns:
         str: The response from the LLM model.
     """
-    print(thinking)
+    import time
     batch_messages = _batch_inputs_to_messages(prompt_template=prompt_template, batch_inputs=batch_inputs)
+    batch_size = 1
     if batch_size is not None:
         results = []
         for i in range(0, len(batch_messages), batch_size):
@@ -143,8 +144,9 @@ def batch_function_call_llm(
     '''
     tools = schema
     batch_messages = _batch_inputs_to_messages(prompt_template=prompt_template, batch_inputs=batch_inputs)
-    
+    batch_size=1
     if batch_size is not None:
+        print(batch_size)
         results = []
         for i in range(0, len(batch_messages), batch_size):
             batch_results = batch_function_call_openai(batch_messages[i:i+batch_size], llm=llm, tools=tools, temperature=temperature)

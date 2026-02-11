@@ -64,7 +64,7 @@ async def api_call_single(client: AsyncOpenAI, model: str, messages: list[dict],
                )
 async def api_function_call_single(client: AsyncOpenAI, model: str, messages: list[dict], tools: list[dict], temperature: float = 0.0, thinking: bool = False, **kwargs):
     # Call the API
-    print('\napi_function_call_single', client.base_url)
+    #print('\napi_function_call_single', client.base_url)
     
     # Call the API
     ###
@@ -79,7 +79,14 @@ async def api_function_call_single(client: AsyncOpenAI, model: str, messages: li
         messages=messages,
         #tools=tools,
         temperature=temperature,
-        extra_body={"structured_outputs": {"json": tools[0]}},
+        #extra_body={"structured_outputs": {"json": tools[0]}},
+        response_format={
+            "type": "json_object",
+            "json_schema": {
+                "name": "schema",
+                "schema": tools[0]
+            },
+        },
         **kwargs
     )
     return response

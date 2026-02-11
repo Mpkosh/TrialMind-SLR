@@ -49,7 +49,7 @@ def info_from_doc(file_path):
 
 
 def use_llm(model='Qwen/Qwen3-32B', messages=[]):
-    
+    #print(os.getenv("BASE_URL"))
     response = openai_client.chat.completions.create(
         model=model,
         messages=messages,
