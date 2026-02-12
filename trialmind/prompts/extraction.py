@@ -36,12 +36,12 @@ Return the information in the following JSON-format.
         {{
             "name": "fieldName1",
             "value": "extractedInfo1",
-            "source_id":[source1, source2, ...]
+            "source_id":[1, 2, 3]
         }},
         {{
             "name":"fieldName2",
             "value":"extractedInfo2",
-            "source_id":[source1, source2, ...]
+            "source_id":[4]
         }},
         ...
     ]

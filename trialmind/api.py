@@ -409,7 +409,7 @@ class StudyCharacteristicsExtraction:
         # call llm
         #outputs = batch_call_llm(STUDY_FIELDS_EXTRACTION_2, batch_inputs, 
         #                         llm=llm, batch_size=batch_size, thinking=thinking)
-        print('\noutputs:',outputs)
+        #print('\noutputs:',outputs)
         #parsed_outputs = extract_json(outputs[0])
         parsed_outputs = parse_json_outputs(outputs)
         print('\nparsed_outputs:',parsed_outputs)
