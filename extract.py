@@ -48,7 +48,8 @@ def info_from_doc(file_path):
     return fin_condition,treatements_eng
 
 
-def use_llm(model='Qwen/Qwen3-32B', messages=[]):
+def use_llm(model='Qwen/Qwen3-32B', messages=[],openai_client=openai_client):
+    
     #print(os.getenv("BASE_URL"))
     response = openai_client.chat.completions.create(
         model=model,

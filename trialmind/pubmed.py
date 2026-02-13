@@ -526,15 +526,20 @@ def pmid2biocxml(pmid, api_key):
     if not isinstance(pmid, list): pmid = [pmid]
     res = []
     for pmid_ in pmid:
+        request_url = base_url.format(pmid=pmid_, text_type='pubmed',
+                                         pubmed_api_key=api_key)
+        response = requests.get(request_url)
+        '''
         request_url = base_url.format(pmid=pmid_, text_type='pmcoa',
                                      pubmed_api_key=api_key)
         response = requests.get(request_url)
-        print(request_url)
+        #print(request_url)
         # if the full text isn't available, then take an abstract
         if 'No result can be found' in response.text:
             request_url = base_url.format(pmid=pmid_, text_type='pubmed',
                                          pubmed_api_key=api_key)
             response = requests.get(request_url)
+        '''
         res.append(response.text)
     return res
 
