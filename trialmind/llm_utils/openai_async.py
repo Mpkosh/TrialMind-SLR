@@ -73,7 +73,7 @@ async def api_function_call_single(client: AsyncOpenAI, model: str, messages: li
     
     if not thinking:
         messages[0]['content'] = '/no_think '+messages[0]['content']
-        
+    '''    
     response = await client.chat.completions.create(
         model=model,
         messages=messages,
@@ -88,6 +88,16 @@ async def api_function_call_single(client: AsyncOpenAI, model: str, messages: li
             },
         },
         **kwargs
+    )
+    '''
+    response = await client.chat.completions.parse(
+        model=model,
+        messages=messages,
+        #tools=tools,
+        temperature=temperature,
+        #extra_body={"structured_outputs": {"json": tools[0]}},
+        response_format=tools[0]
+        #**kwargs
     )
     return response
 
@@ -181,7 +191,8 @@ def batch_function_call_openai(batch_messages, llm, tools, temperature,thinking=
     parsed_results = []
     for result in results:
         try:
-            content = result.choices[0].message.content
+            #content = result.choices[0].message.content
+            content = result.choices[0].message.parsed
             parsed_results.append(content)
         except:
             parsed_results.append("")

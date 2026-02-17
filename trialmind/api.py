@@ -26,6 +26,7 @@ from .prompts.extraction import (
     STUDY_RESULTS_FORMATTING,
     RESULT_TABLE_EXTRACTION,
     STUDY_FIELDS_EXTRACTION_2,
+    STUDY_FIELDS_EXTRACTION_3,
     STUDY_RESULTS_STANDARDIZATION,
     RESULT_TABLE_TEMPLATE,
     )
@@ -350,9 +351,18 @@ class StudyCharacteristicsExtraction:
         ]
     def __init__(self):
         pass
-
+    
+    
+    def search(self, query, doc_id):
+        
+        retrieved_docs = self.vector_store.similarity_search(query, k=2,
+                                                             filter={"source": doc_id})
+        #docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
+        return [i.page_content for i in retrieved_docs]
+    
+        
     def run(self,
-        papers: list[Union[str,list[str]]],
+        papers_inp: list[Union[str,list[str]]],
         fields: list[str]=[],
         llm: str="gpt-4",
         batch_size: int = None,
@@ -361,11 +371,19 @@ class StudyCharacteristicsExtraction:
         chunk_size: int = 1000,
         chunk_overlap: int = 20,
         thinking: bool = False,
+        vector_store = '',
         ):
+        
+        self.vector_store = vector_store
         # get the fields
         fields = fields if len(fields) > 0 else self.DEFAULT_FIELDS
         fields_info = '\n'.join([f"<field id={idx+1}>\"{field}\"</field>" for idx, field in enumerate(fields)])
-
+        
+        pmid_list, papers = papers_inp
+        print(pmid_list)
+        
+        batch_inputs = []
+        '''
         # build batch inputs
         batch_inputs = []
         splited_docs = []
@@ -380,7 +398,7 @@ class StudyCharacteristicsExtraction:
                 splited_doc = semantic_filtering_fn(splited_doc, fields, semantic_filtering_top_k)
                 new_splited_docs.append(splited_doc)
             splited_docs = new_splited_docs
-            
+
         unique_splited_docs = []
         for i, splited in enumerate(splited_docs):
             combined, splited = combine_blocks_text(splited)
@@ -389,45 +407,57 @@ class StudyCharacteristicsExtraction:
                 "paper_content": combined,
                 "fields": fields_info
             })
-            
-        from pydantic import BaseModel, validator, Field, conlist  # This is the new version
+        '''
+        unique_splited_docs = []
+        ## works for one field only!
+        for paper_id in pmid_list:
+            found_parts = self.search(fields[0], paper_id)
+            combined = combine_blocks_text(found_parts)
+            unique_splited_docs.append(found_parts)
+            batch_inputs.append({
+                "paper_content": combined,
+                "fields": fields_info
+            })
+        print(len(batch_inputs))
+        
+        from pydantic import BaseModel, validator, Field, conlist  
         from typing import Dict, Literal
         class FieldResult(BaseModel):
             name: str = Field(description='Field name that accurately represents the content of the field based on its description.',
                              max_length=25)
-            value: str = Field(description='Extracted information from the text based on the field description.',
-                              max_length=50)
+            value: str = Field(description='Extracted information wih context from the text based on the field description.',
+                              max_length=150)
             source_id: conlist(int,min_length=1, max_length=3) = Field(description='Cited document IDs.')
         class Results(BaseModel):
             fieldresult: list[FieldResult]#FieldResult
             
-        print(STUDY_FIELDS_EXTRACTION_2)
-        outputs = batch_function_call_llm(STUDY_FIELDS_EXTRACTION_2, batch_inputs, 
-                                 [Results.model_json_schema()],
+        print(STUDY_FIELDS_EXTRACTION_3)
+        outputs = batch_function_call_llm(STUDY_FIELDS_EXTRACTION_3, batch_inputs, 
+                                 [Results],
                                  llm=llm, batch_size=batch_size)
         
         # call llm
         #outputs = batch_call_llm(STUDY_FIELDS_EXTRACTION_2, batch_inputs, 
         #                         llm=llm, batch_size=batch_size, thinking=thinking)
-        #print('\noutputs:',outputs)
+        print('\noutputs:',outputs)
         #parsed_outputs = extract_json(outputs[0])
-        parsed_outputs = parse_json_outputs(outputs)
-        print('\nparsed_outputs:',parsed_outputs)
+        #parsed_outputs = parse_json_outputs(outputs)
+        #print('\nparsed_outputs:',parsed_outputs)
         # attach the cited blocks to the outputs
         cited_parsed_outputs = []
-        for i, output in enumerate(parsed_outputs):
+        for i, output in enumerate(outputs):
             blocks = unique_splited_docs[i]
             new_output = []
-            for field_output in output:
-                src_ids = field_output.get("source_id", [])
+            for field_output in output.fieldresult:
+                src_ids = field_output.source_id
                 cited = []
                 for src_id in src_ids:
                     src_id = int(src_id) # we have id as str!
                     cited.append(blocks[src_id])
-                field_output["cited_blocks"] = cited
+                field_output._cited_blocks = cited
                 new_output.append(field_output)
             cited_parsed_outputs.append(new_output)
-        return cited_parsed_outputs
+        return outputs
     
 class LiteratureScreening:
     """Pass the papers through the screening criteria to determine if they are relevant to the research question.
@@ -476,11 +506,12 @@ class LiteratureScreening:
         class PaperEvaluation(BaseModel):
             evaluations: conlist(Literal['YES', 'NO', 'UNCERTAIN'], min_length=n_criteria, max_length=n_criteria) = Field(description=f"Evaluations for {n_criteria} criteria")
             rationale: conlist(str,min_length=n_criteria, max_length=n_criteria) = Field(description="A rationale for each criteria evaluation")
-        outputs = batch_function_call_llm(LITERATURE_SCREENING_FC, batch_inputs, [PaperEvaluation.model_json_schema()], llm=llm, batch_size=batch_size)    
-        #outputs = batch_function_call_llm(LITERATURE_SCREENING_FC, batch_inputs, PaperEvaluation, llm=llm, batch_size=batch_size)
-        #print('\nOUTPUTS: ', outputs)
-        outputs = parse_json_outputs(outputs)
+        #outputs = batch_function_call_llm(LITERATURE_SCREENING_FC, batch_inputs, [PaperEvaluation.model_json_schema()], llm=llm, batch_size=batch_size)    
+        
+        outputs = batch_function_call_llm(LITERATURE_SCREENING_FC, batch_inputs, [PaperEvaluation], llm=llm, batch_size=batch_size)
         print('\nOUTPUTS: ', outputs)
+        #outputs = parse_json_outputs(outputs)
+        #print('\nOUTPUTS: ', outputs)
         # try to fix the predictions if not met the output format
         #parsed_outputs = self._check_outputs(outputs, n_criteria)
         return outputs
