@@ -355,7 +355,7 @@ class StudyCharacteristicsExtraction:
     
     def search(self, query, doc_id):
         
-        retrieved_docs = self.vector_store.similarity_search(query, k=2,
+        retrieved_docs = self.vector_store.similarity_search(query, k=4,
                                                              filter={"source": doc_id})
         #docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
         return [i.page_content for i in retrieved_docs]
@@ -414,6 +414,9 @@ class StudyCharacteristicsExtraction:
             found_parts = self.search(fields[0], paper_id)
             combined = combine_blocks_text(found_parts)
             unique_splited_docs.append(found_parts)
+            print(paper_id)
+            for j in found_parts:
+                print(j)
             batch_inputs.append({
                 "paper_content": combined,
                 "fields": fields_info
@@ -423,13 +426,13 @@ class StudyCharacteristicsExtraction:
         from pydantic import BaseModel, validator, Field, conlist  
         from typing import Dict, Literal
         class FieldResult(BaseModel):
-            name: str = Field(description='Field name that accurately represents the content of the field based on its description.',
+            name: Literal[fields[0].split(',')[0]] = Field( description='Field name that accurately represents the content of the field based on its description.',
                              max_length=25)
-            value: str = Field(description='Extracted information wih context from the text based on the field description.',
-                              max_length=150)
-            source_id: conlist(int,min_length=1, max_length=3) = Field(description='Cited document IDs.')
+            value: str = Field(description='Extracted information from the text based on the field description.',
+                              max_length=200)
+            source_id: conlist(int,min_length=0, max_length=3) = Field(description='Cited document IDs.')
         class Results(BaseModel):
-            fieldresult: list[FieldResult]#FieldResult
+            fieldresult: list[FieldResult] = Field(min_length=1, max_length=1) 
             
         print(STUDY_FIELDS_EXTRACTION_3)
         outputs = batch_function_call_llm(STUDY_FIELDS_EXTRACTION_3, batch_inputs, 
