@@ -28,24 +28,41 @@ def info_from_doc(file_path):
     text = re.search('База клинических испытаний:(.*)', docs[0].page_content
          ).groups()[0].strip()
     # Colon cancer ?
+    '''
+    treat_table = re.search('(Ранг.{,10}Препарат.{,10}Активированные.{,10}мишени'+\
+          '.{,10}Подавленные.{,10}мишени.{,10}Drug.{,10}score)'+\
+          '(.*)(№.{,10}Ген.{,10}Транcкрипт.{,10}Замена.{,10}Тип)',
+          docs[0].page_content.replace('\x0c',''), 
+          flags=re.DOTALL).groups()[1]
+    '''
+    # тк в некоторых доках (216) после нужной таблицы идет не "полный... мутаций", а "полный список генов..."
+    treat_table = re.search('(Ранг.{,10}Препарат.{,10}Активированные.{,10}мишени'+\
+          '.{,10}Подавленные.{,10}мишени.{,10}Drug.{,10}score)'+\
+          '(.*)(Полный)',
+          docs[0].page_content.replace('\x0c',''), 
+          flags=re.DOTALL).groups()[1]
 
-    border_phrase = 'Полный рейтинг и подробное описание даны на стр.'
-    # ищем между 2-мя фразами, заменяем знак новой страницы на '', точка -- любой символ И переносы строк
-    treat_table = re.search(f'(?<={border_phrase})(.*)(?={border_phrase})', docs[0].page_content.replace('\x0c',''), 
-              flags=re.DOTALL).groups()[0]
-    treatement = re.findall('\\n\\d+ (.*)\n', treat_table)
-    treatement = ', '.join(treatement)
+    # между 1) номером строки в таблице и 2) след.колонкой в строке
+    treatements = re.findall('\\n\\d+ (.*)\n', treat_table)
+    # между 1) номером строки в таблице и 2) след.колонкой в строке
+    # любой символ кроме минуса и цифры; минус, если есть; до точки; после точки.
+    drug_scores = re.findall('\\n[^-\d]?(-?\\d+\.\\d+).?\n', treat_table)
+    df = pd.DataFrame([treatements,drug_scores]).T
+    df.columns = ['treat','score']
+    df.score = df.score.astype(float)
+    treat001 = ' '.join(df[df.score>=0.01].treat.values)
     
     messages = [{'role':'system', 'content':'You are a helpful assistant /no_think'},
                 {'role':'user', 'content':f"Translate into English: {text}"}]
     
     fin_condition = use_llm(os.getenv("MODEL_NAME"), messages)
+    
     messages = [{'role':'system', 'content':'You are a helpful assistant /no_think'},
-                {'role':'user', 'content':f"Translate into English: {treatement}"}]
+                {'role':'user', 'content':f"Translate into English: {treat001}. Answer only with translations, do not include any clarifications"}]
     treatements_eng = use_llm(os.getenv("MODEL_NAME"), messages).split(',')
     treatements_eng = [i.strip() for i in treatements_eng]
     
-    return fin_condition,treatements_eng
+    return fin_condition,treatements_eng, df
 
 
 def use_llm(model='Qwen/Qwen3-32B', messages=[],openai_client=openai_client):
