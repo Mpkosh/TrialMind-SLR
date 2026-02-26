@@ -35,7 +35,10 @@ def info_from_doc(file_path):
           docs[0].page_content.replace('\x0c',''), 
           flags=re.DOTALL).groups()[1]
     '''
+    
+    '''
     # тк в некоторых доках (216) после нужной таблицы идет не "полный... мутаций", а "полный список генов..."
+    
     treat_table = re.search('(Ранг.{,10}Препарат.{,10}Активированные.{,10}мишени'+\
           '.{,10}Подавленные.{,10}мишени.{,10}Drug.{,10}score)'+\
           '(.*)(Полный)',
@@ -49,6 +52,37 @@ def info_from_doc(file_path):
     drug_scores = re.findall('\\n[^-\d]?(-?\\d+\.\\d+).?\n', treat_table)
     df = pd.DataFrame([treatements,drug_scores]).T
     df.columns = ['treat','score']
+    '''
+    
+    # ищем след.раздел от нашей таблицы
+    table_oc = re.search('(?:Содержание)[^\\n]*(\\n[\D]*)', 
+          docs[0].page_content.replace('\x0c',''), 
+          flags=re.DOTALL).groups()[0].split('\n')
+    table_treats_id = table_oc.index('Полный список препаратов')
+    next_title = table_oc[table_treats_id+1]
+
+    table_part = re.search('(Ранг.{,10}Препарат.{,10}Активированные.{,10}мишени'+\
+                          '.{,10}Подавленные.{,10}мишени.{,10}Drug.{,10}score)'+\
+                          f'(.*)(?:{next_title})',
+                          #'(.*)(Полный)',
+                          docs[0].page_content.replace('\x0c',''), 
+                          flags=re.DOTALL).group()
+    
+    treats=re.findall("(\s?\\n\d+([ а-яА-Я]*))"+\
+              "((\\n[ a-zA-Zа\d,\n]*((?!\\n\d).)*)| )"+\
+              "(\\n(- |(-?\d+\.\d+)))",
+             table_part,
+             flags=re.DOTALL)
+    treats_df = pd.DataFrame(treats, 
+                             columns=['name_','treat',
+                                      'm_','m2_','_',
+                                      'drugscore_','score','d_']
+                            )
+    df = treats_df[['treat','score']]
+    # просто не указано число; меняем
+    df.loc[df.score.isin(['- ','-',' -']),'score'] = '10.00'
+    
+    
     df.score = df.score.astype(float)
     treat001 = ' '.join(df[df.score>=0.01].treat.values)
     
