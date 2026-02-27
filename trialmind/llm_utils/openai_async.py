@@ -47,12 +47,13 @@ async def api_call_single(client: AsyncOpenAI, model: str, messages: list[dict],
     # Call the API
     print('\napi_call_single', client.base_url)
     if not thinking:
-        messages[0]['content'] = '/no_think '+messages[0]['content']
+        messages[0]['content'] = '/set nothink '+messages[0]['content']
     
     response = await client.chat.completions.create(
         model=model,
         messages=messages,  # Ensure messages is a list
         temperature=temperature,
+        extra_body={"reasoning_effort": "none"},
         **kwargs
     )
 
@@ -70,9 +71,9 @@ async def api_function_call_single(client: AsyncOpenAI, model: str, messages: li
     ###
     #batch_inputs,prompt_template = messages
     #print(tools[0])
-    
+    print(thinking)
     if not thinking:
-        messages[0]['content'] = '/no_think '+messages[0]['content']
+        messages[0]['content'] = '/set nothink '+messages[0]['content']
     '''    
     response = await client.chat.completions.create(
         model=model,
@@ -96,7 +97,8 @@ async def api_function_call_single(client: AsyncOpenAI, model: str, messages: li
         #tools=tools,
         temperature=temperature,
         #extra_body={"structured_outputs": {"json": tools[0]}},
-        response_format=tools[0]
+        response_format=tools[0],
+        extra_body={"reasoning_effort": "none"}
         #**kwargs
     )
     return response

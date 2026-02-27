@@ -60,10 +60,12 @@ def info_from_doc(file_path):
           flags=re.DOTALL).groups()[0].split('\n')
     table_treats_id = table_oc.index('Полный список препаратов')
     next_title = table_oc[table_treats_id+1]
-
+    # первая часть, тк при переносе строк символы,...
+    xx = next_title[:25].replace(' ','[ \\n]')
+    
     table_part = re.search('(Ранг.{,10}Препарат.{,10}Активированные.{,10}мишени'+\
                           '.{,10}Подавленные.{,10}мишени.{,10}Drug.{,10}score)'+\
-                          f'(.*)(?:{next_title})',
+                          f'(.*)(?:{xx})',
                           #'(.*)(Полный)',
                           docs[0].page_content.replace('\x0c',''), 
                           flags=re.DOTALL).group()
