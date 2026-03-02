@@ -2,8 +2,8 @@ import requests
 import pandas as pd
 
 from langchain_community.document_loaders import PyMuPDFLoader
-from langchain_pymupdf4llm import PyMuPDF4LLMLoader, PyMuPDF4LLMParser
-import pymupdf4llm
+#from langchain_pymupdf4llm import PyMuPDF4LLMLoader, PyMuPDF4LLMParser
+#import pymupdf4llm
 import re
 import os
 
@@ -94,7 +94,7 @@ def info_from_doc(file_path):
     fin_condition = use_llm(os.getenv("MODEL_NAME"), messages)
     
     messages = [{'role':'system', 'content':'You are a helpful assistant /no_think'},
-                {'role':'user', 'content':f"Translate into English: {treat001}. Answer only with translations, do not include any clarifications"}]
+                {'role':'user', 'content':f"Translate into English: {treat001}. Separate each term with a comma. Answer only with translations, do not include any clarifications"}]
     treatements_eng = use_llm(os.getenv("MODEL_NAME"), messages).split(',')
     treatements_eng = [i.strip() for i in treatements_eng]
     
@@ -107,7 +107,8 @@ def use_llm(model='Qwen/Qwen3-32B', messages=[],openai_client=openai_client):
     response = openai_client.chat.completions.create(
         model=model,
         messages=messages,
-        temperature=0
+        temperature=0,
+        extra_body={"reasoning_effort": "none"}
     )
     fin = response.choices[0].message.content
     fin = fin.strip('<think>\n\n</think>\n\n')

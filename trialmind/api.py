@@ -355,7 +355,7 @@ class StudyCharacteristicsExtraction:
     
     def search(self, query, doc_id):
         
-        retrieved_docs = self.vector_store.similarity_search(query, k=4,
+        retrieved_docs = self.vector_store.similarity_search(query, k=10,
                                                              filter={"source": doc_id})
         #docs_content = "\n\n".join(doc.page_content for doc in retrieved_docs)
         return [i.page_content for i in retrieved_docs]
@@ -411,12 +411,13 @@ class StudyCharacteristicsExtraction:
         unique_splited_docs = []
         ## works for one field only!
         for paper_id in pmid_list:
-            found_parts = self.search(fields[0], paper_id)
+            #print(fields[0].split(',')[-1])
+            found_parts = self.search(fields[0].split(',')[-1], paper_id)
             combined = combine_blocks_text(found_parts)
             unique_splited_docs.append(found_parts)
-            print(paper_id)
-            for j in found_parts:
-                print(j)
+            #print(paper_id)
+            #for j in found_parts:
+                #print(j)
             batch_inputs.append({
                 "paper_content": combined,
                 "fields": fields_info
@@ -434,7 +435,7 @@ class StudyCharacteristicsExtraction:
         class Results(BaseModel):
             fieldresult: list[FieldResult] = Field(min_length=1, max_length=1) 
             
-        print(STUDY_FIELDS_EXTRACTION_3)
+        #print(STUDY_FIELDS_EXTRACTION_3)
         outputs = batch_function_call_llm(STUDY_FIELDS_EXTRACTION_3, batch_inputs, 
                                  [Results],
                                  llm=llm, batch_size=batch_size)
@@ -442,7 +443,7 @@ class StudyCharacteristicsExtraction:
         # call llm
         #outputs = batch_call_llm(STUDY_FIELDS_EXTRACTION_2, batch_inputs, 
         #                         llm=llm, batch_size=batch_size, thinking=thinking)
-        print('\noutputs:',outputs)
+        #print('\noutputs:',outputs)
         #parsed_outputs = extract_json(outputs[0])
         #parsed_outputs = parse_json_outputs(outputs)
         #print('\nparsed_outputs:',parsed_outputs)
@@ -512,7 +513,7 @@ class LiteratureScreening:
         #outputs = batch_function_call_llm(LITERATURE_SCREENING_FC, batch_inputs, [PaperEvaluation.model_json_schema()], llm=llm, batch_size=batch_size)    
         
         outputs = batch_function_call_llm(LITERATURE_SCREENING_FC, batch_inputs, [PaperEvaluation], llm=llm, batch_size=batch_size)
-        print('\nOUTPUTS: ', outputs)
+        #print('\nOUTPUTS: ', outputs)
         #outputs = parse_json_outputs(outputs)
         #print('\nOUTPUTS: ', outputs)
         # try to fix the predictions if not met the output format

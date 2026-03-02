@@ -144,6 +144,7 @@ def batch_function_call_llm(
     '''
     tools = schema
     batch_messages = _batch_inputs_to_messages(prompt_template=prompt_template, batch_inputs=batch_inputs)
+    #print(batch_messages)
     batch_size=1
     if batch_size is not None:
         print(batch_size)

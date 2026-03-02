@@ -75,10 +75,11 @@ def combine_blocks_text(blocks, format="xml"):
         if isinstance(block, Document):
             block = block.page_content
         new_blocks.append(block)
-    new_blocks = list(set(new_blocks))
+    #new_blocks = list(set(new_blocks)) # change of order
+    new_blocks = list(new_blocks)
     if format == "xml":
         new_block_strs = [f"<source id=\"{i}\"><content>{block}</content></source>" for i,block in enumerate(new_blocks)]
     else:
         new_block_strs = [f"[[citation:{i}]] {block}" for i,block in enumerate(new_blocks)]
     combined = '\n\n'.join(new_block_strs)
-    return combined, new_blocks
+    return combined#, new_blocks
