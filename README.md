@@ -44,3 +44,24 @@ Show how to use the code to extract results from a given paper.
   doi     = {10.1038/s41746-025-01840-7},
 }
 ```
+## Layer sizes
+* 1
+* 2
+* 3
+## Learning rate is 2
+## Init
+Add note about init
+## Layer sizes
+* 1
+* 2
+* 3
+## Learning rate is 2
+## Init
+Add note about init
+## Layer sizes
+* 1
+* 2
+* 3
+## Learning rate is 2
+## Init
+Add note about init

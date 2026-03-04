@@ -1,0 +1,65 @@
+<h1>TrialMind</h1>
+<h2>Pre-requisites</h2>
+<ul>
+<li><code>requirements.txt</code> contains the required packages for the code to run.</li>
+</ul>
+<h2>API Keys</h2>
+<p>The code requires API keys for the</p>
+<ul>
+<li>
+<p>OpenAI GPT API for its chat endpoint: https://platform.openai.com/docs/api-reference/chat/create </p>
+</li>
+<li>
+<p>PubMed API key for PubMed search: https://www.ncbi.nlm.nih.gov/home/develop/api/. Help is here: https://support.nlm.nih.gov/knowledgebase/article/KA-05317/en-us </p>
+</li>
+<li>
+<p>E2B sandbox API key for executing generated code (optional for result extraction): https://e2b.dev/docs</p>
+</li>
+</ul>
+<h2>Examples</h2>
+<h3>literature_search.ipynb</h3>
+<p>Show how to use the code to search for literature on a given topic.</p>
+<h3>literature_screen.ipynb</h3>
+<p>Show how to use the code to screen literature on a given topic.</p>
+<h3>study_extraction.ipynb</h3>
+<p>Show how to use the code to extract study information from a given paper.</p>
+<h3>result_extraction.ipynb</h3>
+<p>Show how to use the code to extract results from a given paper.</p>
+<h1>Citations</h1>
+<p><code>bib
+@article{wang2025accelerating,
+  title   = {Accelerating clinical evidence synthesis with large language models},
+  author  = {Wang, Zifeng and Cao, Lang and Danek, Benjamin and Jin, Qiao and Lu, Zhiyong and Sun, Jimeng},
+  journal = {npj Digital Medicine},
+  volume  = {8},
+  pages   = {509},
+  year    = {2025},
+  doi     = {10.1038/s41746-025-01840-7},
+}</code></p>
+<h2>Layer sizes</h2>
+<ul>
+<li>1</li>
+<li>2</li>
+<li>3</li>
+</ul>
+<h2>Learning rate is 2</h2>
+<h2>Init</h2>
+<p>Add note about init</p>
+<h2>Layer sizes</h2>
+<ul>
+<li>1</li>
+<li>2</li>
+<li>3</li>
+</ul>
+<h2>Learning rate is 2</h2>
+<h2>Init</h2>
+<p>Add note about init</p>
+<h2>Layer sizes</h2>
+<ul>
+<li>1</li>
+<li>2</li>
+<li>3</li>
+</ul>
+<h2>Learning rate is 2</h2>
+<h2>Init</h2>
+<p>Add note about init</p>
