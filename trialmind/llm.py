@@ -147,7 +147,7 @@ def batch_function_call_llm(
     #print(batch_messages)
     batch_size=1
     if batch_size is not None:
-        print(batch_size)
+        #print(batch_size)
         results = []
         for i in range(0, len(batch_messages), batch_size):
             batch_results = batch_function_call_openai(batch_messages[i:i+batch_size], llm=llm, tools=tools, temperature=temperature)

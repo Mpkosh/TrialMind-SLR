@@ -1,6 +1,6 @@
 import requests
 import pandas as pd
-
+import numpy as np
 from langchain_community.document_loaders import PyMuPDFLoader
 #from langchain_pymupdf4llm import PyMuPDF4LLMLoader, PyMuPDF4LLMParser
 #import pymupdf4llm
@@ -161,7 +161,7 @@ def get_clinicaltrials(query_term, query_intr, max_studies=20):
         'query.intr': query_intr,
         #'filter.overallStatus':'',
         'pageSize': max_studies, # maximum number of !!studies!! to return in response
-        #'aggFilters':'results:with',
+        'aggFilters':'results:with',
         'format': 'json', 
         #'pageToken': None  # first page doesn't need it
     }    
@@ -236,8 +236,140 @@ def get_clinicaltrials(query_term, query_intr, max_studies=20):
     return all_studies
 
 
-
-
 def treat_studies(treatement, all_studies):
     idx = [treatement in ' '.join(d) for d in all_studies.interventions]
     return all_studies[idx]
+
+
+def ctrials_res(ec_pred, all_studies):
+    import numpy as np
+    from pydantic import BaseModel, validator, Field, conlist  # This is the new version
+    from typing import Dict, Literal
+    
+    PROMPT_RES_EXTRACTION  = '''
+    You are a clinical specialist analyzing clinical trial study reports. 
+    Your task is to to extract specific information as structured data.
+
+    # Reply Format: 
+    Return the information in the following JSON-format.
+    ```json
+    {{        
+        [
+            {{
+                "population": n,
+                "time_frame": "time_frame",
+                "outcomes":
+                    [
+                        {{
+                            "category_name": "category1",
+                            "outcome": k1
+                        }},
+                        {{
+                            "category_name": "category2",
+                            "outcome": k2
+                        }},
+                        ...
+                    ]
+             }},
+            ...
+        ]
+    }}
+    ```
+    You MUST return ONLY valid JSON, Do NOT include any explanations, comments, or extra text.
+    '''
+    
+    evals = [i.evaluations for i in ec_pred]
+    word2int = {"YES": 1, "UNCERTAIN": 0,"NO": -1}
+    new_evals = []
+    for one_e in evals:
+        new_evals.append([word2int.get(item, 0) for item in one_e ])
+    new_evals = np.array(new_evals)    
+    all_studies['screen_eval'] = new_evals.sum(axis=1)
+    
+    class Outcome(BaseModel):
+        category_name: str = Field(description='Short description of a category')
+        outcome: int = Field(description='Percent of participants')
+
+    class ClinicalResult(BaseModel):
+        population: int = Field(description='Total number of participants.')
+        time_frame: str = Field(description='Time frame')
+        outcomes: list[Outcome]
+    
+    at_once = False
+    openai_client = OpenAI(
+        base_url=os.getenv("BASE_URL"),
+        api_key=os.getenv("OPENAI_API_KEY"),
+        http_client=httpx.Client(verify=False)
+    )
+
+    chosen = all_studies[(all_studies.screen_eval>=0)&(all_studies.hasResults==True)]
+    chosen['res_with_part'] = chosen['outcomeMeasures'].apply(lambda x: [obj for obj in x \
+                                                              if(obj.get('unitOfMeasure','').lower() in ['percentage of participants','participants'])])
+
+    to_work = chosen[chosen.res_with_part.str.len()>0]
+    if to_work.shape[0]:
+        messages = []
+        for i in to_work.res_with_part.values:
+            n_outcomes = len(i)
+            messages.append([{'role':'system', 'content':PROMPT_RES_EXTRACTION+' \no_think'},
+                    {'role':'user', 'content':f"{i}"}])
+        if at_once:
+            results = batch_call_openai(messages, os.getenv('MODEL_NAME'), 
+                                        int(os.getenv('TEMPERATURE')), thinking=False)
+        else:
+            #print(messages)
+            resultsct = []
+            for i in messages:
+                #$answer = extract.use_llm(os.getenv('MODEL_NAME'),i)
+
+                response = openai_client.chat.completions.parse(
+                    model=os.getenv('MODEL_NAME'),
+                    messages=messages[0],
+                    temperature=0,
+                    response_format=ClinicalResult,
+                    extra_body={"reasoning_effort": "none"}
+                )
+                fin = response.choices[0].message.parsed
+                #answer = fin.strip('<think>\n\n</think>\n\n')
+                resultsct.append(fin)
+                
+    return resultsct
+
+
+
+def combine_res(fin_condition, treatements_eng, extracted, pmid_list):
+    def replacement_match(match):
+        #print(match.groups()[0])
+        return f'[[{pmid_list[int(match.groups()[0])]}]]'
+
+    text_chunks = '\n\n'.join(
+        [f"<source id=\"{i}\"><result>{block.fieldresult[0].value}</result>"+\
+         f"<context>{'. /n/n '.join(block.fieldresult[0]._cited_blocks)}</context></source>" \
+             for i,block in enumerate(extracted)
+        ])
+    
+    prompt = '''You are a clinical specialist. You are conducting a clincial meta-analysis.
+
+        # Task
+        The user will provide a list of extracted results of treating {fin_condition} with {treatements_eng} from different sources along with context. 
+        1. Choose no more than 10 best extracted results. Give priority to more specific results rather than abstract ones.
+        2. Combine best extracted results in one coherent paragraph. Each result should appear only once and stay in a separate sentence.
+        3. Provide a reference to the document ID from which this information was extracted. The citation id must be integers only and be in double square brackets -- [[citation]]. Citations should not be repeated!
+        
+
+        # User provided inputs
+
+        text_chunks = \"\"\"{text_chunks}\"\"\"
+
+        # Response format
+        Answer with sentences and references.
+        '''
+    messages=[{'role':'user',
+               'content':prompt.format(text_chunks=text_chunks,
+                                       fin_condition=fin_condition,
+                                       treatements_eng=treatements_eng)
+              }]
+    response = use_llm(os.getenv("MODEL_NAME"), messages)
+    return re.sub(r'\[\[(\d+)\]\]', replacement_match, response)
+
+

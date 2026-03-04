@@ -581,14 +581,17 @@ class CTScreening:
         #from langchain.pydantic_v1 import BaseModel, validator, Field, conlist
         from pydantic import BaseModel, validator, Field, conlist  # This is the new version
         from typing import Dict, Literal
+        
         class PaperEvaluation(BaseModel):
             evaluations: conlist(Literal['YES', 'NO', 'UNCERTAIN'], min_length=n_criteria, max_length=n_criteria) = Field(description=f"Evaluations for {n_criteria} criteria")
             rationale: conlist(str,min_length=n_criteria, max_length=n_criteria) = Field(description="A rationale for each criteria evaluation") 
-        print(CT_SCREENING_FC)    
-        outputs = batch_function_call_llm(CT_SCREENING_FC, batch_inputs, [PaperEvaluation.model_json_schema()], llm=llm, batch_size=batch_size)
+            
+        #print(CT_SCREENING_FC)    
+        outputs = batch_function_call_llm(CT_SCREENING_FC, batch_inputs, 
+                                          [PaperEvaluation], llm=llm, batch_size=batch_size)
         #print('\nOUTPUTS: ', outputs)
-        outputs = parse_json_outputs(outputs)
-        print('\nOUTPUTS after json extr: ', outputs)
+        #outputs = parse_json_outputs(outputs)
+        #print('\nOUTPUTS after json extr: ', outputs)
         # try to fix the predictions if not met the output format
         #parsed_outputs = self._check_outputs(outputs, n_criteria)
         return outputs

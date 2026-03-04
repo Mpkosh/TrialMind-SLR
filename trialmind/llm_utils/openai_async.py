@@ -71,7 +71,7 @@ async def api_function_call_single(client: AsyncOpenAI, model: str, messages: li
     ###
     #batch_inputs,prompt_template = messages
     #print(tools[0])
-    print(thinking)
+    #print(thinking)
     if not thinking:
         messages[0]['content'] = '/set nothink '+messages[0]['content']
     '''    
