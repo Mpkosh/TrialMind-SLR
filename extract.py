@@ -352,9 +352,8 @@ def combine_res(fin_condition, treatements_eng, extracted, pmid_list):
 
         # Task
         The user will provide a list of extracted results of treating {fin_condition} with {treatements_eng} from different sources along with context. 
-        1. Choose no more than 10 best extracted results. Give priority to more specific results rather than abstract ones.
-        2. Combine best extracted results in one coherent paragraph. Each result should appear only once and stay in a separate sentence.
-        3. Provide a reference to the document ID from which this information was extracted. The citation id must be integers only and be in double square brackets -- [[citation]]. Citations should not be repeated!
+        1. Combine extracted results in one coherent paragraph. Each result should appear only once and stay in a separate sentence.
+        2. Provide a reference to the document ID from which this information was extracted. The citation id must be integers only and be in double square brackets -- [[citation]]. Citations should not be repeated!
         
 
         # User provided inputs
@@ -362,7 +361,7 @@ def combine_res(fin_condition, treatements_eng, extracted, pmid_list):
         text_chunks = \"\"\"{text_chunks}\"\"\"
 
         # Response format
-        Answer with sentences and references.
+        Answer with sentences and references in double square brackets.
         '''
     messages=[{'role':'user',
                'content':prompt.format(text_chunks=text_chunks,
