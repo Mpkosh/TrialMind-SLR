@@ -253,37 +253,7 @@ def ctrials_res(ec_pred, all_studies):
     from pydantic import BaseModel, validator, Field, conlist  # This is the new version
     from typing import Dict, Literal
     
-    PROMPT_RES_EXTRACTION  = '''
-    You are a clinical specialist analyzing clinical trial study reports. 
-    Your task is to to extract specific information as structured data.
-
-    # Reply Format: 
-    Return the information in the following JSON-format.
-    ```json
-    {{        
-        [
-            {{
-                "population": n,
-                "time_frame": "time_frame",
-                "outcomes":
-                    [
-                        {{
-                            "category_name": "category1",
-                            "outcome": k1
-                        }},
-                        {{
-                            "category_name": "category2",
-                            "outcome": k2
-                        }},
-                        ...
-                    ]
-             }},
-            ...
-        ]
-    }}
-    ```
-    You MUST return ONLY valid JSON, Do NOT include any explanations, comments, or extra text.
-    '''
+    
     
     evals = [i.evaluations for i in ec_pred]
     word2int = {"YES": 1, "UNCERTAIN": 0,"NO": -1}
@@ -293,14 +263,37 @@ def ctrials_res(ec_pred, all_studies):
     new_evals = np.array(new_evals)    
     all_studies['screen_eval'] = new_evals.sum(axis=1)
     
-    class Outcome(BaseModel):
-        category_name: str = Field(description='Short description of a category')
-        outcome: int = Field(description='Percent of participants')
+    class Measure(BaseModel):
+        measure_description: str = Field(description='Short description of what is being measured',
+                                        max_length=200)
+        measure_result: float = Field(description='Percent of participants')
 
-    class ClinicalResult(BaseModel):
+    class GroupMeasures(BaseModel):
+        group_description: str = Field(description='Short group description',
+                                      max_length=200)
+        measures: list[Measure]
+
+    class Outcome(BaseModel):
+        description: str = Field(description='Short description of an outcome',
+                                max_length=200)
         population: int = Field(description='Total number of participants.')
-        time_frame: str = Field(description='Time frame')
+        time_frame: str = Field(description='Time frame', max_length=200 )
+        measures: list[GroupMeasures]
+
+    class Outcomes(BaseModel):
         outcomes: list[Outcome]
+    
+    PROMPT_RES_EXTRACTION  = f'''
+    You are a clinical specialist analyzing clinical trial study reports. 
+    Your task is to to extract specific information as structured data.
+
+    # Reply Format: 
+    Return the information in the following JSON-format.
+    ```
+    {Outcomes.model_json_schema()}
+    ```
+    You MUST return ONLY valid JSON, Do NOT include any explanations, comments, or extra text.
+    '''
     
     at_once = False
     openai_client = OpenAI(
@@ -312,7 +305,7 @@ def ctrials_res(ec_pred, all_studies):
     chosen = all_studies[(all_studies.screen_eval>=0)&(all_studies.hasResults==True)]
     chosen['res_with_part'] = chosen['outcomeMeasures'].apply(lambda x: [obj for obj in x \
                                                               if(obj.get('unitOfMeasure','').lower() in ['percentage of participants','participants'])])
-
+    
     to_work = chosen[chosen.res_with_part.str.len()>0]
     if to_work.shape[0]:
         messages = []
@@ -326,14 +319,14 @@ def ctrials_res(ec_pred, all_studies):
         else:
             #print(messages)
             resultsct = []
-            for i in messages:
+            for message in messages:
                 #$answer = extract.use_llm(os.getenv('MODEL_NAME'),i)
 
                 response = openai_client.chat.completions.parse(
                     model=os.getenv('MODEL_NAME'),
-                    messages=messages[i],
+                    messages=message,
                     temperature=0,
-                    response_format=ClinicalResult,
+                    response_format=Outcomes,
                     extra_body={"reasoning_effort": "none"}
                 )
                 fin = response.choices[0].message.parsed
@@ -403,14 +396,26 @@ def gen_report(treatements_eng, fin_condition):
             return f'[{self.h}]'
     
     
-    class Outcome(BaseModel):
-        category_name: str = Field(description='Short description of a category')
-        outcome: int = Field(description='Percent of participants')
+    class Measure(BaseModel):
+        measure_description: str = Field(description='Short description of what is being measured',
+                                        max_length=200)
+        measure_result: float = Field(description='Percent of participants')
 
-    class ClinicalResult(BaseModel):
+    class GroupMeasures(BaseModel):
+        group_description: str = Field(description='Short group description',
+                                      max_length=200)
+        measures: list[Measure]
+
+    class Outcome(BaseModel):
+        description: str = Field(description='Short description of an outcome',
+                                max_length=200)
         population: int = Field(description='Total number of participants.')
-        time_frame: str = Field(description='Time frame')
+        time_frame: str = Field(description='Time frame', max_length=200 )
+        measures: list[GroupMeasures]
+
+    class Outcomes(BaseModel):
         outcomes: list[Outcome]
+    
     
     class FieldResult(BaseModel):
         name: str
@@ -438,7 +443,7 @@ def gen_report(treatements_eng, fin_condition):
         pmid_list = papers_res.id.values
         
         trials = pd.read_csv(f"res_files/ctrials_res_df_{treatement.replace(' ','_')}_{fin_condition.replace(' ','_')}.csv")
-        trial_res = trials['res'].apply(lambda x: ClinicalResult.model_validate_json(x)).values
+        trial_res = trials['res'].apply(lambda x: Outcomes.model_validate_json(x)).values
         
         add = f"""\n## Treatement 1: {treatement}\n\n### Chosen clinical trials:\n"""
         text2 = text2+add
