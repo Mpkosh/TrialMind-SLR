@@ -423,7 +423,7 @@ class StudyCharacteristicsExtraction:
                 "fields": fields_info
             })
         print(len(batch_inputs))
-        
+        #print(batch_inputs)
         from pydantic import BaseModel, validator, Field, conlist  
         from typing import Dict, Literal
         class FieldResult(BaseModel):
@@ -455,6 +455,7 @@ class StudyCharacteristicsExtraction:
             for field_output in output.fieldresult:
                 src_ids = field_output.source_id
                 cited = []
+                print(len(blocks), src_ids)
                 for src_id in src_ids:
                     src_id = int(src_id) # we have id as str!
                     cited.append(blocks[src_id])
