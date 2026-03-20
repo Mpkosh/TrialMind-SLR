@@ -6,7 +6,7 @@ from langchain_community.document_loaders import PyMuPDFLoader
 #import pymupdf4llm
 import re
 import os
-
+from dotenv import load_dotenv, find_dotenv
 from openai import AsyncOpenAI,OpenAI
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -18,6 +18,8 @@ from markdown_pdf import Section
 import ast
 import time
 
+
+load_dotenv(find_dotenv(usecwd=True))
 openai_client = OpenAI(
     base_url=os.getenv("BASE_URL"),
     api_key=os.getenv("OPENAI_API_KEY"),
@@ -26,37 +28,12 @@ openai_client = OpenAI(
 
 
 def info_from_doc(file_path, with_ru=False):
+
     loader = PyMuPDFLoader(file_path, mode='single')
     docs = loader.load()
     
     text = re.search('База клинических испытаний:(.*)', docs[0].page_content
          ).groups()[0].strip()
-    # Colon cancer ?
-    '''
-    treat_table = re.search('(Ранг.{,10}Препарат.{,10}Активированные.{,10}мишени'+\
-          '.{,10}Подавленные.{,10}мишени.{,10}Drug.{,10}score)'+\
-          '(.*)(№.{,10}Ген.{,10}Транcкрипт.{,10}Замена.{,10}Тип)',
-          docs[0].page_content.replace('\x0c',''), 
-          flags=re.DOTALL).groups()[1]
-    '''
-    
-    '''
-    # тк в некоторых доках (216) после нужной таблицы идет не "полный... мутаций", а "полный список генов..."
-    
-    treat_table = re.search('(Ранг.{,10}Препарат.{,10}Активированные.{,10}мишени'+\
-          '.{,10}Подавленные.{,10}мишени.{,10}Drug.{,10}score)'+\
-          '(.*)(Полный)',
-          docs[0].page_content.replace('\x0c',''), 
-          flags=re.DOTALL).groups()[1]
-
-    # между 1) номером строки в таблице и 2) след.колонкой в строке
-    treatements = re.findall('\\n\\d+ (.*)\n', treat_table)
-    # между 1) номером строки в таблице и 2) след.колонкой в строке
-    # любой символ кроме минуса и цифры; минус, если есть; до точки; после точки.
-    drug_scores = re.findall('\\n[^-\d]?(-?\\d+\.\\d+).?\n', treat_table)
-    df = pd.DataFrame([treatements,drug_scores]).T
-    df.columns = ['treat','score']
-    '''
     
     # ищем след.раздел от нашей таблицы
     table_oc = re.search('(?:Содержание)[^\\n]*(\\n[\D]*)', 
@@ -110,7 +87,6 @@ def info_from_doc(file_path, with_ru=False):
 
 def use_llm(model='Qwen/Qwen3-32B', messages=[],openai_client=openai_client):
     
-    #print(os.getenv("BASE_URL"))
     response = openai_client.chat.completions.create(
         model=model,
         messages=messages,
@@ -253,8 +229,6 @@ def ctrials_res(ec_pred, all_studies):
     from pydantic import BaseModel, validator, Field, conlist  # This is the new version
     from typing import Dict, Literal
     
-    
-    
     evals = [i.evaluations for i in ec_pred]
     word2int = {"YES": 1, "UNCERTAIN": 0,"NO": -1}
     new_evals = []
@@ -296,11 +270,6 @@ def ctrials_res(ec_pred, all_studies):
     '''
     
     at_once = False
-    openai_client = OpenAI(
-        base_url=os.getenv("BASE_URL"),
-        api_key=os.getenv("OPENAI_API_KEY"),
-        http_client=httpx.Client(verify=False)
-    )
 
     chosen = all_studies[(all_studies.screen_eval>=0)&(all_studies.hasResults==True)]
     chosen['res_with_part'] = chosen['outcomeMeasures'].apply(lambda x: [obj for obj in x \
@@ -372,154 +341,3 @@ def combine_res(fin_condition, treatements_eng, extracted, pmid_list):
     return re.sub(r'\[\[(\d+)\]\]', replacement_match, response)
 
 
-def gen_report(treatements_eng, fin_condition):
-    import time
-    from pydantic import BaseModel, validator, Field, conlist  # This is the new version
-    from typing import Dict, Literal
-
-    class hhey:
-        def __init__(self,papers):
-
-            self.dict_h = {}
-            self.h = 0
-            self.papers=papers
-        def replacement_match(self,match):
-            found_id = match.groups()[0]
-            self.h+=1
-            #print(self.h)
-            try:
-                #print(found_id, papers[papers.PMID==int(found_id)].Title.values[0])
-                self.dict_h[self.h]=[self.papers[self.papers.PMID==int(found_id)].Title.values[0],
-                                    'https://pubmed.ncbi.nlm.nih.gov/'+str(found_id)]
-            except IndexError:
-                pass
-            return f'[{self.h}]'
-    
-    
-    class Measure(BaseModel):
-        measure_description: str = Field(description='Short description of what is being measured',
-                                        max_length=200)
-        measure_result: float = Field(description='Percent of participants')
-
-    class GroupMeasures(BaseModel):
-        group_description: str = Field(description='Short group description',
-                                      max_length=200)
-        measures: list[Measure]
-
-    class Outcome(BaseModel):
-        description: str = Field(description='Short description of an outcome',
-                                max_length=200)
-        population: int = Field(description='Total number of participants.')
-        time_frame: str = Field(description='Time frame', max_length=200 )
-        measures: list[GroupMeasures]
-
-    class Outcomes(BaseModel):
-        outcomes: list[Outcome]
-    
-    
-    class FieldResult(BaseModel):
-        name: str
-        value: str = Field(description='Extracted information from the text based on the field description.',
-                          max_length=200)
-        source_id: conlist(int,min_length=0, max_length=3) = Field(description='Cited document IDs.')
-    class Results(BaseModel):
-        fieldresult: list[FieldResult] = Field(min_length=1, max_length=1) 
-
-        
-    pdf = MarkdownPdf(toc_level=4, optimize=True)
-
-    section = Section("# Title\n", toc=False)
-    text2 = f"""# Diagnosis: {fin_condition}"""
-
-
-    for treatement in treatements_eng[:1]:
-        papers = pd.read_csv(f"res_files/papers_all_df_{treatement.replace(' ','_')}_{fin_condition.replace(' ','_')}.csv")
-        papers_res = pd.read_csv(f"res_files/papers_res_df_{treatement.replace(' ','_')}_{fin_condition.replace(' ','_')}.csv")
-        res_extracted = papers_res['class'].apply(
-            lambda x: Results.model_validate_json(x)).values
-        for idx, i in enumerate(res_extracted):
-            i.fieldresult[0]._cited_blocks = ast.literal_eval(
-                                                papers_res['citations'].values[idx])
-        pmid_list = papers_res.id.values
-        
-        trials = pd.read_csv(f"res_files/ctrials_res_df_{treatement.replace(' ','_')}_{fin_condition.replace(' ','_')}.csv")
-        trial_res = trials['res'].apply(lambda x: Outcomes.model_validate_json(x)).values
-        
-        add = f"""\n## Treatement 1: {treatement}\n\n### Chosen clinical trials:\n"""
-        text2 = text2+add
-        
-        
-        k = hhey(papers=papers)
-        rr = combine_res(fin_condition, treatement, 
-                        res_extracted, pmid_list) 
-        add_summ = re.sub(r'\[\[(\d+)\]\]', k.replacement_match, rr)
-
-        func_r = ''
-
-        num = 1
-        for i,j in zip(trials.values,trial_res):
-
-            func_r+=f"{num}. '{i[2]}'"+\
-                           f" {i[3].lower()}"+\
-                           f" {' '.join(ast.literal_eval(i[7])).lower()}"+\
-                           f' [https://clinicaltrials.gov/study/{i[1]}](https://clinicaltrials.gov/study/{i[1]})'+\
-                          "\n\n"
-
-            func_r_1 = ""
-            #for j_n, j in enumerate(trial_res):
-            func_r_1 = func_r_1+ \
-                          f"&emsp;&emsp;&emsp;Population: {j.population}"+ '\n\n'+\
-                          f"&emsp;&emsp;&emsp;Time: {j.time_frame}"+ '\n\n'
-
-            for out in j.outcomes:
-                func_r_1 = func_r_1+ "&emsp;&emsp;&emsp;"+out.category_name+\
-                                ': '+str(out.outcome)+ '\n\n'
-
-            func_r+=func_r_1
-            num+=1
-
-        text2=text2+func_r    
-
-
-        text3 = f"""\n### Chosen scientific papers:\n\n{add_summ}\n\n"""
-
-        text2 = text2+text3
-        lit_list = '\n\n'.join([f"[{i}]  {k.dict_h.get(i, 'hh')[0]} [{k.dict_h.get(i, 'hh')[1]}]({k.dict_h.get(i, 'hh')[1]})" for i in range(1,k.h+1)])
-        textall = text2+lit_list
-
-    pdf.add_section(Section(textall))
-
-    pdf.save("test.pdf")
-    
-    # translating into Russian!
-    # TODO: replace diagnosis and treatement names with names from THE report!
-
-    prompt = '''
-        You are a medical specialist. Translate the text into Russian. 
-
-
-        1. Do not change the format.
-        2. English text in single quotes \' \' must be left as is without translation.
-        3. Use the following term for Colorectal cancer -> Колоректальный рак
-        4. Do not add any new text.
-
-        # User provided inputs
-
-        text = \"\"\"{text}\"\"\"
-
-        # Response format
-        Answer only with translated text.
-        '''
-
-    t1 = time.time()
-    messages=[{'role':'user',
-               'content':prompt.format(text=text2)
-              }]
-
-    fint= use_llm(model=os.getenv("MODEL_NAME"), messages=messages)
-    print(time.time()-t1)
-
-    pdf = MarkdownPdf(toc_level=4, optimize=True)
-    pdf.add_section(Section(fint+"\n\n"+lit_list))
-
-    pdf.save(f"doc_{treatement.replace(' ','_')}_{fin_condition.replace(' ','_')}.pdf")
