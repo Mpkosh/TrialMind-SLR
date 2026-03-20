@@ -357,10 +357,10 @@ def fill_pdf(treatements_eng, fin_condition, model_translate='qwen3:8b'):
                               f"&emsp;&emsp;&emsp;Population: {trial_out.population}"+ '\n\n'+\
                               f"&emsp;&emsp;&emsp;Time: {trial_out.time_frame}"+ '\n\n'
                 for mes in trial_out.measures:
-                    func_r_1 = func_r_1+ "&emsp;&emsp;&emsp;group description:"+mes.group_description
+                    func_r_1 = func_r_1+ "&emsp;&emsp;&emsp;group description: "+mes.group_description
                     for one_mes in mes.measures:
-                        func_r_1 = func_r_1+ "&emsp;&emsp;&emsp;measure:"+one_mes.measure_description+\
-                                        '('+str(one_mes.measure_result)+ ')\n\n'
+                        func_r_1 = func_r_1+ "&emsp;&emsp;&emsp;measure: "+one_mes.measure_description+\
+                                        ' ('+str(one_mes.measure_result)+ ')\n\n'
 
             func_r+=func_r_1
             num+=1
