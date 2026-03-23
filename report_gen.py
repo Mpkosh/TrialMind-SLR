@@ -317,7 +317,7 @@ def fill_pdf(treatements_eng, fin_condition, model_translate='qwen3:8b'):
     text2 = f"""# Diagnosis: {fin_condition}"""
 
 
-    for treatement in treatements_eng[:1]:
+    for treat_idx, treatement in enumerate(treatements_eng[:1]):
         papers = pd.read_csv(f"res_files/papers_all_df_{treatement.replace(' ','_')}_{fin_condition.replace(' ','_')}.csv")
         papers_res = pd.read_csv(f"res_files/papers_res_df_{treatement.replace(' ','_')}_{fin_condition.replace(' ','_')}.csv")
         res_extracted = papers_res['class'].apply(
@@ -330,7 +330,7 @@ def fill_pdf(treatements_eng, fin_condition, model_translate='qwen3:8b'):
         trials = pd.read_csv(f"res_files/ctrials_res_df_{treatement.replace(' ','_')}_{fin_condition.replace(' ','_')}.csv")
         trial_res = trials['res'].apply(lambda x: Outcomes.model_validate_json(x)).values
         
-        add = f"""\n## Treatement 1: {treatement}\n\n### Chosen clinical trials:\n"""
+        add = f"""\n## Treatement {treat_idx+1}: {treatement}\n\n### Chosen clinical trials:\n"""
         text2 = text2+add
         
         
@@ -357,10 +357,12 @@ def fill_pdf(treatements_eng, fin_condition, model_translate='qwen3:8b'):
                               f"&emsp;&emsp;&emsp;Population: {trial_out.population}"+ '\n\n'+\
                               f"&emsp;&emsp;&emsp;Time: {trial_out.time_frame}"+ '\n\n'
                 for mes in trial_out.measures:
-                    func_r_1 = func_r_1+ "&emsp;&emsp;&emsp;&emsp;group description: "+mes.group_description+'\n\n'
+                    func_r_1 = func_r_1+ "&emsp;&emsp;&emsp;&emsp;group description: "+\
+                        mes.group_description+'\n\n'
                     for one_mes in mes.measures:
-                        func_r_1 = func_r_1+ "&emsp;&emsp;&emsp;&emsp;&emsp;measure: "+one_mes.measure_description+\
-                                        ' ('+str(one_mes.measure_result)+ ')\n\n'
+                        func_r_1 = func_r_1+ "&emsp;&emsp;&emsp;&emsp;&emsp;measure: "+\
+                            one_mes.measure_description+' ('+\
+                            str(round(float(one_mes.measure_result),2))+ ')\n\n'
 
             func_r+=func_r_1
             num+=1
